@@ -32,6 +32,27 @@ $binDir = "src/$modName/bin/$Configuration"
 Copy-Item "$binDir/*.dll" $modDir
 Copy-Item "src/$modName/ModInfo.xml" $modDir
 
+# Copy SQLite.Interop.dll (native component for System.Data.SQLite)
+# Must be in a subfolder so the game's mod loader doesn't try to load it as a managed assembly
+$interopSrc = "$binDir/x64/SQLite.Interop.dll"
+if (Test-Path $interopSrc) {
+    $nativeDir = "$modDir/x64"
+    New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
+    Copy-Item $interopSrc $nativeDir
+    Write-Host "  Copied SQLite.Interop.dll to x64/" -ForegroundColor Gray
+} else {
+    Write-Warning "SQLite.Interop.dll not found at $interopSrc — SQLite may fail at runtime!"
+}
+
+# Copy System.ComponentModel.DataAnnotations (required by System.Web.Http, not in Unity/Mono)
+$dataAnnotations = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.ComponentModel.DataAnnotations.dll'
+if (Test-Path $dataAnnotations) {
+    Copy-Item $dataAnnotations $modDir
+    Write-Host "  Copied System.ComponentModel.DataAnnotations.dll" -ForegroundColor Gray
+} else {
+    Write-Warning "System.ComponentModel.DataAnnotations.dll not found — Web API may fail at runtime!"
+}
+
 # Copy config
 if (Test-Path "src/$modName/Config") {
     Copy-Item -Recurse "src/$modName/Config" "$modDir/Config"

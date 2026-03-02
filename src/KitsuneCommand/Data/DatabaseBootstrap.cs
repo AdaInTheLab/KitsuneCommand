@@ -1,5 +1,5 @@
 using Dapper;
-using Microsoft.Data.Sqlite;
+using System.Data.SQLite;
 
 namespace KitsuneCommand.Data
 {
@@ -10,6 +10,9 @@ namespace KitsuneCommand.Data
     {
         public static void Initialize(string databasePath, string modPath)
         {
+            // Configure Dapper to map snake_case columns to PascalCase properties
+            DefaultTypeMap.MatchNamesWithUnderscores = true;
+
             // Ensure directory exists
             var dbDir = Path.GetDirectoryName(databasePath);
             if (!string.IsNullOrEmpty(dbDir) && !Directory.Exists(dbDir))
@@ -17,7 +20,7 @@ namespace KitsuneCommand.Data
                 Directory.CreateDirectory(dbDir);
             }
 
-            using var connection = new SqliteConnection($"Data Source={databasePath}");
+            using var connection = new SQLiteConnection($"Data Source={databasePath};Version=3;");
             connection.Open();
 
             // Enable WAL mode and foreign keys
@@ -35,9 +38,11 @@ namespace KitsuneCommand.Data
 
             // Run pending migrations
             ApplyMigrations(connection, modPath);
+
+            Log.Out("[KitsuneCommand] Database initialized: " + databasePath);
         }
 
-        public static void ApplyMigrations(SqliteConnection connection, string modPath)
+        public static void ApplyMigrations(SQLiteConnection connection, string modPath)
         {
             var migrationsDir = Path.Combine(modPath, "Config", "Migrations");
             if (!Directory.Exists(migrationsDir))

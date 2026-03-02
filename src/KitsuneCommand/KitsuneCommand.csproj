@@ -27,9 +27,9 @@
     <PackageReference Include="NSwag.Annotations" Version="14.2.0" />
   </ItemGroup>
 
-  <!-- Database -->
+  <!-- Database (System.Data.SQLite works on Mono/Unity, unlike Microsoft.Data.Sqlite) -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.3" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
     <PackageReference Include="Dapper" Version="2.1.35" />
   </ItemGroup>
 

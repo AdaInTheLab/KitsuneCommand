@@ -1,5 +1,5 @@
-using Microsoft.Data.Sqlite;
 using System.Data;
+using System.Data.SQLite;
 
 namespace KitsuneCommand.Data
 {
@@ -12,12 +12,12 @@ namespace KitsuneCommand.Data
 
         public DbConnectionFactory(string databasePath)
         {
-            _connectionString = $"Data Source={databasePath}";
+            _connectionString = $"Data Source={databasePath};Version=3;";
         }
 
         public IDbConnection CreateConnection()
         {
-            var connection = new SqliteConnection(_connectionString);
+            var connection = new SQLiteConnection(_connectionString);
             connection.Open();
             return connection;
         }

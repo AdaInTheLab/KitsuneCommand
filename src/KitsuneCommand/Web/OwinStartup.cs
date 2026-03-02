@@ -36,6 +36,16 @@ namespace KitsuneCommand.Web
             app.Use<CorsMiddleware>(_settings);
 
             // 3. OAuth2 authorization server (token endpoint)
+            // Use HMAC-based data protection (DPAPI is not available on Mono/Unity)
+            app.Properties["security.DataProtectionProvider"] = (Func<string[], Tuple<Func<byte[], byte[]>, Func<byte[], byte[]>>>)
+                (purposes =>
+                {
+                    var protector = new HmacDataProtectionProvider("KitsuneCommand").Create(purposes);
+                    return Tuple.Create<Func<byte[], byte[]>, Func<byte[], byte[]>>(
+                        data => protector.Protect(data),
+                        data => protector.Unprotect(data));
+                });
+
             var authService = _container.Resolve<AuthService>();
             authService.EnsureAdminExists();
 
