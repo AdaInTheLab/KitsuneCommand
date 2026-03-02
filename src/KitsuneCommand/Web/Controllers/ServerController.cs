@@ -54,10 +54,10 @@ namespace KitsuneCommand.Web.Controllers
             var gameManager = GameManager.Instance;
             var stats = new
             {
-                fps = GameManager.fps,
+                fps = gameManager?.fps?.Counter ?? 0f,
                 entityCount = gameManager?.World?.Entities?.Count ?? 0,
                 playerCount = gameManager?.World?.Players?.Count ?? 0,
-                uptime = Time.time,
+                uptime = UnityEngine.Time.time,
                 gcMemory = GC.GetTotalMemory(false) / (1024 * 1024) // MB
             };
 

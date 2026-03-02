@@ -94,12 +94,14 @@ namespace KitsuneCommand.Core
             Log.LogCallbacks += OnLogCallback;
         }
 
-        private void OnGameAwake()
+        // --- V2.5 API: All handlers use ref struct data params ---
+
+        private void OnGameAwake(ref ModEvents.SGameAwakeData _data)
         {
             _eventBus.Publish(new GameAwakeEvent());
         }
 
-        private void OnGameStartDone()
+        private void OnGameStartDone(ref ModEvents.SGameStartDoneData _data)
         {
             ModEntry.IsGameStartDone = true;
             Log.Out("[KitsuneCommand] Game start complete. All systems active.");
@@ -111,7 +113,7 @@ namespace KitsuneCommand.Core
             _eventBus.Publish(new GameStartDoneEvent());
         }
 
-        private void OnGameShutdown()
+        private void OnGameShutdown(ref ModEvents.SGameShutdownData _data)
         {
             Log.Out("[KitsuneCommand] Shutting down...");
 
@@ -119,102 +121,112 @@ namespace KitsuneCommand.Core
 
             _wsServer?.Stop();
             _webServer?.Stop();
-            _harmony?.UnpatchAll("com.kitsunecommand.mod");
+            _harmony?.UnpatchSelf();
             _container?.Dispose();
 
             Log.Out("[KitsuneCommand] Shutdown complete.");
         }
 
-        private void OnPlayerLogin(ClientInfo clientInfo, string compatibilityVersion, StringBuilder rejectReason)
+        private ModEvents.EModEventResult OnPlayerLogin(ref ModEvents.SPlayerLoginData _data)
         {
-            if (clientInfo == null) return;
+            var ci = _data.ClientInfo;
+            if (ci == null) return ModEvents.EModEventResult.Continue;
 
             _eventBus.Publish(new PlayerLoginEvent
             {
-                PlayerId = clientInfo.CrossplatformId?.CombinedString,
-                PlayerName = clientInfo.playerName,
-                EntityId = clientInfo.entityId,
-                PlatformId = clientInfo.PlatformId?.CombinedString,
-                Ip = clientInfo.ip
+                PlayerId = ci.CrossplatformId?.CombinedString,
+                PlayerName = ci.playerName,
+                EntityId = ci.entityId,
+                PlatformId = ci.PlatformId?.CombinedString,
+                Ip = ci.ip
             });
+
+            return ModEvents.EModEventResult.Continue;
         }
 
-        private void OnPlayerSpawnedInWorld(ClientInfo clientInfo, RespawnType respawnReason, Vector3i pos)
+        private void OnPlayerSpawnedInWorld(ref ModEvents.SPlayerSpawnedInWorldData _data)
         {
-            if (clientInfo == null) return;
+            var ci = _data.ClientInfo;
+            if (ci == null) return;
 
             _eventBus.Publish(new PlayerSpawnedEvent
             {
-                PlayerId = clientInfo.CrossplatformId?.CombinedString,
-                PlayerName = clientInfo.playerName,
-                EntityId = clientInfo.entityId,
-                RespawnType = (Abstractions.Models.RespawnType)(int)respawnReason,
-                PositionX = pos.x,
-                PositionY = pos.y,
-                PositionZ = pos.z
+                PlayerId = ci.CrossplatformId?.CombinedString,
+                PlayerName = ci.playerName,
+                EntityId = ci.entityId,
+                RespawnType = (Abstractions.Models.RespawnType)(int)_data.RespawnType,
+                PositionX = _data.Position.x,
+                PositionY = _data.Position.y,
+                PositionZ = _data.Position.z
             });
         }
 
-        private void OnPlayerDisconnected(ClientInfo clientInfo, bool shutdown)
+        private void OnPlayerDisconnected(ref ModEvents.SPlayerDisconnectedData _data)
         {
-            if (clientInfo == null) return;
+            var ci = _data.ClientInfo;
+            if (ci == null) return;
 
             _eventBus.Publish(new PlayerDisconnectedEvent
             {
-                PlayerId = clientInfo.CrossplatformId?.CombinedString,
-                PlayerName = clientInfo.playerName,
-                EntityId = clientInfo.entityId
+                PlayerId = ci.CrossplatformId?.CombinedString,
+                PlayerName = ci.playerName,
+                EntityId = ci.entityId
             });
         }
 
-        private void OnPlayerSpawning(ClientInfo clientInfo, int chunkViewDim, PlayerProfile playerProfile)
+        private void OnPlayerSpawning(ref ModEvents.SPlayerSpawningData _data)
         {
-            if (clientInfo == null) return;
+            var ci = _data.ClientInfo;
+            if (ci == null) return;
 
             _eventBus.Publish(new PlayerSpawningEvent
             {
-                PlayerId = clientInfo.CrossplatformId?.CombinedString,
-                PlayerName = clientInfo.playerName,
-                EntityId = clientInfo.entityId
+                PlayerId = ci.CrossplatformId?.CombinedString,
+                PlayerName = ci.playerName,
+                EntityId = ci.entityId
             });
         }
 
-        private void OnSavePlayerData(ClientInfo clientInfo, PlayerDataFile playerDataFile)
+        private void OnSavePlayerData(ref ModEvents.SSavePlayerDataData _data)
         {
-            if (clientInfo == null) return;
+            var ci = _data.ClientInfo;
+            if (ci == null) return;
 
             _eventBus.Publish(new SavePlayerDataEvent
             {
-                PlayerId = clientInfo.CrossplatformId?.CombinedString,
-                PlayerName = clientInfo.playerName,
-                EntityId = clientInfo.entityId
+                PlayerId = ci.CrossplatformId?.CombinedString,
+                PlayerName = ci.playerName,
+                EntityId = ci.entityId
             });
         }
 
-        private void OnEntityKilled(Entity killed, Entity killer)
+        private void OnEntityKilled(ref ModEvents.SEntityKilledData _data)
         {
+            // Note: game API has a typo - "KilledEntitiy" not "KilledEntity"
+            var killed = _data.KilledEntitiy;
+            var killer = _data.KillingEntity;
+
             _eventBus.Publish(new EntityKilledEvent
             {
                 DeadEntityId = killed?.entityId ?? -1,
-                DeadEntityName = killed?.EntityName,
+                DeadEntityName = (killed as EntityAlive)?.EntityName ?? killed?.ToString(),
                 KillerEntityId = killer?.entityId ?? -1,
-                KillerName = killer?.EntityName
+                KillerName = (killer as EntityAlive)?.EntityName ?? killer?.ToString()
             });
         }
 
-        private bool OnChatMessage(ClientInfo clientInfo, EChatType chatType, int senderId,
-            string message, string mainName, bool localizeMain, List<int> recipientEntityIds)
+        private ModEvents.EModEventResult OnChatMessage(ref ModEvents.SChatMessageData _data)
         {
             _eventBus.Publish(new ChatMessageEvent
             {
-                PlayerId = clientInfo?.CrossplatformId?.CombinedString,
-                EntityId = senderId,
-                SenderName = mainName,
-                ChatType = (ChatType)(int)chatType,
-                Message = message
+                PlayerId = _data.ClientInfo?.CrossplatformId?.CombinedString,
+                EntityId = _data.SenderEntityId,
+                SenderName = _data.MainName,
+                ChatType = (ChatType)(int)_data.ChatType,
+                Message = _data.Message
             });
 
-            return true; // Allow message to pass through
+            return ModEvents.EModEventResult.Continue;
         }
 
         private void OnLogCallback(string message, string trace, UnityEngine.LogType logType)

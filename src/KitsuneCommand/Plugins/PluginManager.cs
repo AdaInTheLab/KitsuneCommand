@@ -1,5 +1,6 @@
 using System.Reflection;
 using Autofac;
+using Autofac.Integration.WebApi;
 
 namespace KitsuneCommand.Plugins
 {
