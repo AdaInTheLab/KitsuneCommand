@@ -2,22 +2,34 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from 'vue-i18n'
+import { SUPPORTED_LOCALES, setLocale, type LocaleCode } from '@/i18n'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import Select from 'primevue/select'
 
 const router = useRouter()
 const auth = useAuthStore()
+const { t, locale } = useI18n()
 
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
 
+const localeOptions = SUPPORTED_LOCALES.map((l) => ({ label: l.name, value: l.code }))
+const selectedLocale = ref(locale.value as string)
+
+function onLocaleChange(val: string) {
+  selectedLocale.value = val
+  setLocale(val as LocaleCode)
+}
+
 async function handleLogin() {
   if (!username.value || !password.value) {
-    error.value = 'Please enter both username and password.'
+    error.value = t('login.errorBothRequired')
     return
   }
 
@@ -29,7 +41,7 @@ async function handleLogin() {
     await router.push({ name: 'Dashboard' })
   } catch (e: unknown) {
     const err = e as { response?: { data?: { error_description?: string } } }
-    error.value = err.response?.data?.error_description || 'Login failed. Check your credentials.'
+    error.value = err.response?.data?.error_description || t('login.loginFailed')
   } finally {
     loading.value = false
   }
@@ -39,27 +51,38 @@ async function handleLogin() {
 <template>
   <div class="login-container">
     <div class="login-card">
+      <div class="lang-picker">
+        <Select
+          :modelValue="selectedLocale"
+          @update:modelValue="onLocaleChange"
+          :options="localeOptions"
+          optionLabel="label"
+          optionValue="value"
+          class="lang-select"
+        />
+      </div>
+
       <div class="login-header">
-        <h1 class="login-title">KitsuneCommand</h1>
-        <p class="login-subtitle">7D2D Server Management</p>
+        <h1 class="login-title">{{ t('login.title') }}</h1>
+        <p class="login-subtitle">{{ t('login.subtitle') }}</p>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
         <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
 
         <div class="field">
-          <label for="username">Username</label>
+          <label for="username">{{ t('login.username') }}</label>
           <InputText
             id="username"
             v-model="username"
-            placeholder="admin"
+            :placeholder="t('login.usernamePlaceholder')"
             :disabled="loading"
             class="w-full"
           />
         </div>
 
         <div class="field">
-          <label for="password">Password</label>
+          <label for="password">{{ t('login.password') }}</label>
           <Password
             id="password"
             v-model="password"
@@ -74,7 +97,7 @@ async function handleLogin() {
 
         <Button
           type="submit"
-          label="Sign In"
+          :label="t('login.signIn')"
           :loading="loading"
           class="w-full login-button"
           icon="pi pi-sign-in"
@@ -82,7 +105,7 @@ async function handleLogin() {
       </form>
 
       <div class="login-footer">
-        <span>Monitoring | Management | Map</span>
+        <span>{{ t('login.footer') }}</span>
       </div>
     </div>
   </div>
@@ -105,6 +128,18 @@ async function handleLogin() {
   width: 100%;
   max-width: 420px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+
+.lang-picker {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+.lang-select {
+  width: 130px;
+  font-size: 0.8rem;
 }
 
 .login-header {

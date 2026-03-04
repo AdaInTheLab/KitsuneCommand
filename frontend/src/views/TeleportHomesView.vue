@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { usePermissions } from '@/composables/usePermissions'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -11,6 +12,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const confirmService = useConfirm()
@@ -35,7 +37,7 @@ async function fetchHomes() {
     homes.value = result.items
     totalHomes.value = result.total
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load home locations', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('teleportHomes.failedToLoad'), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -57,17 +59,17 @@ function onSearch() {
 
 function confirmDeleteHome(home: HomeLocation) {
   confirmService.require({
-    message: `Delete home "${home.homeName}" for ${home.playerName || home.playerId}?`,
-    header: 'Confirm Delete',
+    message: t('teleportHomes.confirmDeleteMessage', { name: home.homeName, player: home.playerName || home.playerId }),
+    header: t('common.confirmDelete'),
     icon: 'pi pi-trash',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
         await deleteHome(home.id)
-        toast.add({ severity: 'success', summary: 'Deleted', detail: `Home "${home.homeName}" deleted`, life: 3000 })
+        toast.add({ severity: 'success', summary: t('common.success'), detail: t('teleportHomes.homeDeleted', { name: home.homeName }), life: 3000 })
         fetchHomes()
       } catch {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete home', life: 3000 })
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('teleportHomes.failedToDelete'), life: 3000 })
       }
     },
   })
@@ -76,10 +78,10 @@ function confirmDeleteHome(home: HomeLocation) {
 async function handleTeleportOwner(home: HomeLocation) {
   try {
     const result = await teleportToHome(home.id)
-    toast.add({ severity: 'success', summary: 'Teleported', detail: result.message, life: 4000 })
+    toast.add({ severity: 'success', summary: t('teleportHomes.teleported'), detail: result.message, life: 4000 })
   } catch (err: any) {
-    const msg = err?.response?.data?.message || 'Failed to teleport player'
-    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 4000 })
+    const msg = err?.response?.data?.message || t('teleportHomes.failedToTeleport')
+    toast.add({ severity: 'error', summary: t('common.error'), detail: msg, life: 4000 })
   }
 }
 
@@ -95,20 +97,20 @@ onMounted(fetchHomes)
 <template>
   <div class="teleport-view">
     <div class="page-header">
-      <h1 class="page-title">Teleport</h1>
+      <h1 class="page-title">{{ t('teleport.title') }}</h1>
     </div>
 
     <!-- Sub-tab navigation -->
     <div class="sub-tabs">
-      <button class="sub-tab" @click="navigateTo('cities')">Cities</button>
-      <button class="sub-tab sub-tab--active">Homes</button>
-      <button class="sub-tab" @click="navigateTo('history')">History</button>
+      <button class="sub-tab" @click="navigateTo('cities')">{{ t('teleport.cities') }}</button>
+      <button class="sub-tab sub-tab--active">{{ t('teleport.homes') }}</button>
+      <button class="sub-tab" @click="navigateTo('history')">{{ t('teleport.history') }}</button>
     </div>
 
     <div class="toolbar">
       <span class="p-input-icon-left search-wrapper">
         <i class="pi pi-search" />
-        <InputText v-model="searchFilter" placeholder="Search by player or home name..." class="search-input" />
+        <InputText v-model="searchFilter" :placeholder="t('teleportHomes.searchPlaceholder')" class="search-input" />
       </span>
       <Button icon="pi pi-refresh" text severity="secondary" @click="fetchHomes" :loading="loading" />
     </div>
@@ -124,7 +126,7 @@ onMounted(fetchHomes)
       :rowsPerPageOptions="[25, 50, 100]"
       @page="onPage"
     >
-      <Column field="playerName" header="Player">
+      <Column field="playerName" :header="t('teleportHomes.player')">
         <template #body="{ data }">
           <div class="player-name">
             <i class="pi pi-user" />
@@ -133,15 +135,15 @@ onMounted(fetchHomes)
         </template>
       </Column>
 
-      <Column field="homeName" header="Home Name" />
+      <Column field="homeName" :header="t('teleportHomes.homeName')" />
 
-      <Column field="position" header="Position" style="width: 220px">
+      <Column field="position" :header="t('teleportHomes.position')" style="width: 220px">
         <template #body="{ data }">
           <code class="position-text">{{ data.position }}</code>
         </template>
       </Column>
 
-      <Column header="Actions" style="width: 120px">
+      <Column :header="t('common.actions')" style="width: 120px">
         <template #body="{ data }">
           <div class="action-buttons">
             <Button
@@ -151,7 +153,7 @@ onMounted(fetchHomes)
               severity="info"
               size="small"
               @click="handleTeleportOwner(data)"
-              title="Teleport Owner to Home"
+              :title="t('teleportHomes.teleportOwnerToHome')"
             />
             <Button
               v-if="canManageTeleport"
@@ -160,7 +162,7 @@ onMounted(fetchHomes)
               severity="danger"
               size="small"
               @click="confirmDeleteHome(data)"
-              title="Delete"
+              :title="t('common.delete')"
             />
           </div>
         </template>
@@ -169,8 +171,8 @@ onMounted(fetchHomes)
       <template #empty>
         <div class="empty-state">
           <i class="pi pi-home" style="font-size: 2rem; color: var(--kc-text-secondary)" />
-          <p>No home locations yet</p>
-          <span class="empty-hint">Player homes will appear here once players save their locations.</span>
+          <p>{{ t('teleportHomes.noHomesYet') }}</p>
+          <span class="empty-hint">{{ t('teleportHomes.homesHint') }}</span>
         </div>
       </template>
     </DataTable>

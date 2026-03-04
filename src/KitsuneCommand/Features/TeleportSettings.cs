@@ -1,0 +1,17 @@
+namespace KitsuneCommand.Features
+{
+    /// <summary>
+    /// Configuration settings for the Teleport feature.
+    /// </summary>
+    public class TeleportSettings
+    {
+        /// <summary>Countdown delay in seconds before a teleport executes.</summary>
+        public int TeleportDelaySeconds { get; set; } = 5;
+
+        /// <summary>Default points cost for newly created city waypoints.</summary>
+        public int DefaultPointsCost { get; set; } = 0;
+
+        /// <summary>Whether players can teleport during blood moon events.</summary>
+        public bool AllowTeleportDuringBloodMoon { get; set; } = true;
+    }
+}

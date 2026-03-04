@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getMapInfo, getMapMarkers } from '@/api/map'
 import type { MapInfo } from '@/types'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
+const { t } = useI18n()
 const mapContainer = ref<HTMLElement | null>(null)
 const mapInfo = ref<MapInfo | null>(null)
 const loading = ref(true)
@@ -15,19 +17,19 @@ let markerRefreshInterval: ReturnType<typeof setInterval> | null = null
 let resizeObserver: ResizeObserver | null = null
 
 // ── Coordinate conversion ──
-// Standard L.CRS.Simple tile grid at zoom 0: one 256×256 tile
-//   lng: 0 → 256 (left to right)
-//   lat: 0 → −256 (top to bottom, since py = −lat)
+// Standard L.CRS.Simple tile grid at zoom 0: one 256x256 tile
+//   lng: 0 -> 256 (left to right)
+//   lat: 0 -> -256 (top to bottom, since py = -lat)
 //
-// Game coordinates (Navezgane 3072×3072, centered at 0,0):
-//   X: −1536 (west) → 1536 (east)  →  lng 0 → 256
-//   Z: +1536 (north/top) → −1536 (south/bottom)  →  lat 0 → −256
+// Game coordinates (Navezgane 3072x3072, centered at 0,0):
+//   X: -1536 (west) -> 1536 (east)  ->  lng 0 -> 256
+//   Z: +1536 (north/top) -> -1536 (south/bottom)  ->  lat 0 -> -256
 let _worldSize = 3072
 let _halfWorld = 1536
 
 function gameToLatLng(gameX: number, gameZ: number): L.LatLng {
   const lng = (gameX + _halfWorld) / _worldSize * 256
-  const lat = (gameZ - _halfWorld) / _worldSize * 256 // Z=1536→0, Z=-1536→−256
+  const lat = (gameZ - _halfWorld) / _worldSize * 256 // Z=1536->0, Z=-1536->-256
   return L.latLng(lat, lng)
 }
 
@@ -43,7 +45,7 @@ async function initMap() {
     mapInfo.value = info
 
     if (!info.isAvailable) {
-      errorMsg.value = 'Map renderer not available on the server.'
+      errorMsg.value = t('map.mapNotAvailable')
       loading.value = false
       return
     }
@@ -62,24 +64,28 @@ async function initMap() {
       attributionControl: false,
     })
 
-    // Tile layer — Leaflet's CRS.Simple tile grid matches our backend:
-    // at zoom z, 2^z × 2^z tiles of 256px each
-    const tileUrl = `${window.location.origin}/api/map/tile/{z}/{x}/{y}`
-    L.tileLayer(tileUrl, {
-      minZoom: 0,
-      maxZoom: info.maxZoom,
-      tileSize: 256,
-      noWrap: true,
-    }).addTo(leafletMap)
-
     // World bounds in CRS.Simple coordinates
     const worldBounds = L.latLngBounds(
       [-256, 0],  // SW: bottom-left
       [0, 256],   // NE: top-right
     )
 
+    // Tile layer -- Leaflet's CRS.Simple tile grid matches our backend:
+    // at zoom z, 2^z x 2^z tiles of 256px each
+    // `bounds` prevents Leaflet from requesting tiles outside the world area
+    const tileUrl = `${window.location.origin}/api/map/tile/{z}/{x}/{y}`
+    L.tileLayer(tileUrl, {
+      minZoom: 0,
+      maxZoom: info.maxZoom,
+      tileSize: 256,
+      noWrap: true,
+      bounds: worldBounds,
+    }).addTo(leafletMap)
+
+    // Constrain panning so the user can't scroll beyond the world
+    leafletMap.setMaxBounds(worldBounds.pad(0.1))
+
     // Initial view: center of the world, zoom 1 (good default for most screens)
-    // At zoom 1 the world is 512×512 px — fits well in most containers
     const initialZoom = Math.min(1, info.maxZoom)
     leafletMap.setView([-128, 128], initialZoom)
 
@@ -111,13 +117,13 @@ async function initMap() {
       const game = latLngToGame(e.latlng)
       L.popup()
         .setLatLng(e.latlng)
-        .setContent(`<b>Position</b><br>X: ${Math.round(game.x)}, Z: ${Math.round(game.z)}`)
+        .setContent(`<b>${t('map.positionLabel')}</b><br>X: ${Math.round(game.x)}, Z: ${Math.round(game.z)}`)
         .openOn(leafletMap!)
     })
 
     loading.value = false
   } catch (err) {
-    errorMsg.value = 'Failed to load map data.'
+    errorMsg.value = t('map.failedToLoad')
     loading.value = false
   }
 }
@@ -141,7 +147,7 @@ async function refreshMarkers() {
 
       marker.bindPopup(
         `<b>${m.name}</b><br>` +
-        `Position: ${Math.round(m.x)}, ${Math.round(m.y)}, ${Math.round(m.z)}`,
+        `${t('map.positionLabel')}: ${Math.round(m.x)}, ${Math.round(m.y)}, ${Math.round(m.z)}`,
       )
 
       marker.bindTooltip(m.name, { permanent: false, direction: 'top', offset: [0, -8] })
@@ -170,7 +176,7 @@ onUnmounted(() => {
 <template>
   <div class="map-view">
     <div class="page-header">
-      <h1 class="page-title">Map</h1>
+      <h1 class="page-title">{{ t('map.title') }}</h1>
     </div>
 
     <!-- Map container is ALWAYS rendered so Leaflet can measure it -->
@@ -178,7 +184,7 @@ onUnmounted(() => {
       <!-- Loading / error overlays sit inside the map container -->
       <div v-if="loading" class="map-overlay">
         <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-        <p>Loading map...</p>
+        <p>{{ t('map.loadingMap') }}</p>
       </div>
       <div v-else-if="errorMsg" class="map-overlay">
         <i class="pi pi-exclamation-triangle" style="font-size: 2rem; color: var(--kc-orange)"></i>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { getPurchaseHistory } from '@/api/store'
 import type { PurchaseRecord } from '@/types'
@@ -10,6 +11,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Tag from 'primevue/tag'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 
@@ -32,7 +34,7 @@ async function fetchHistory() {
     records.value = result.items
     totalRecords.value = result.total
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load purchase history', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('purchaseHistory.failedToLoad'), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -69,20 +71,20 @@ onMounted(fetchHistory)
 <template>
   <div class="history-view">
     <div class="page-header">
-      <h1 class="page-title">Economy</h1>
+      <h1 class="page-title">{{ t('economy.title') }}</h1>
     </div>
 
     <!-- Sub-tab navigation -->
     <div class="sub-tabs">
-      <button class="sub-tab" @click="navigateTo('points')">Points</button>
-      <button class="sub-tab" @click="navigateTo('store')">Store</button>
-      <button class="sub-tab sub-tab--active">History</button>
+      <button class="sub-tab" @click="navigateTo('points')">{{ t('economy.points') }}</button>
+      <button class="sub-tab" @click="navigateTo('store')">{{ t('economy.store') }}</button>
+      <button class="sub-tab sub-tab--active">{{ t('economy.history') }}</button>
     </div>
 
     <div class="toolbar">
       <span class="p-input-icon-left search-wrapper">
         <i class="pi pi-search" />
-        <InputText v-model="playerFilter" placeholder="Filter by player ID..." class="search-input" />
+        <InputText v-model="playerFilter" :placeholder="t('purchaseHistory.filterPlaceholder')" class="search-input" />
       </span>
       <Button icon="pi pi-refresh" text severity="secondary" @click="fetchHistory" :loading="loading" />
     </div>
@@ -98,13 +100,13 @@ onMounted(fetchHistory)
       :rowsPerPageOptions="[25, 50, 100]"
       @page="onPage"
     >
-      <Column field="createdAt" header="Date" style="width: 180px">
+      <Column field="createdAt" :header="t('purchaseHistory.date')" style="width: 180px">
         <template #body="{ data }">
           <span class="date-text">{{ formatDate(data.createdAt) }}</span>
         </template>
       </Column>
 
-      <Column field="playerName" header="Player">
+      <Column field="playerName" :header="t('purchaseHistory.player')">
         <template #body="{ data }">
           <div class="player-name">
             <i class="pi pi-user" />
@@ -113,9 +115,9 @@ onMounted(fetchHistory)
         </template>
       </Column>
 
-      <Column field="goodsName" header="Item" />
+      <Column field="goodsName" :header="t('purchaseHistory.item')" />
 
-      <Column field="price" header="Price" style="width: 120px">
+      <Column field="price" :header="t('purchaseHistory.price')" style="width: 120px">
         <template #body="{ data }">
           <Tag :value="`${data.price} pts`" severity="warn" />
         </template>
@@ -124,7 +126,7 @@ onMounted(fetchHistory)
       <template #empty>
         <div class="empty-state">
           <i class="pi pi-history" style="font-size: 2rem; color: var(--kc-text-secondary)" />
-          <p>No purchase history yet</p>
+          <p>{{ t('purchaseHistory.noHistoryYet') }}</p>
         </div>
       </template>
     </DataTable>

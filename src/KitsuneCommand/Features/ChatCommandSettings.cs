@@ -43,5 +43,10 @@ namespace KitsuneCommand.Features
 
         /// <summary>Enable /shop and /buy commands.</summary>
         public bool StoreEnabled { get; set; } = true;
+
+        // ── VIP Commands ──────────────────────────────────────────
+
+        /// <summary>Enable /vip command for claiming VIP gifts.</summary>
+        public bool VipEnabled { get; set; } = true;
     }
 }

@@ -1,32 +1,42 @@
 using KitsuneCommand.Configuration;
 using KitsuneCommand.Core;
 using KitsuneCommand.Data.Repositories;
+using Newtonsoft.Json;
 
 namespace KitsuneCommand.Features
 {
     /// <summary>
     /// Points economy feature: awards points for kills, daily sign-in, and playtime.
     /// Broadcasts PointsUpdateEvent via ModEventBus for real-time WebSocket updates.
+    /// Settings are persisted to the database under the "Points" key.
     /// </summary>
     public class PointsFeature : FeatureBase<PointsSettings>
     {
         private readonly IPointsRepository _pointsRepo;
+        private readonly ISettingsRepository _settingsRepo;
         private readonly LivePlayerManager _playerManager;
         private Timer _playtimeTimer;
+
+        private const string SettingsKey = "Points";
 
         public PointsFeature(
             ModEventBus eventBus,
             ConfigManager config,
             IPointsRepository pointsRepo,
+            ISettingsRepository settingsRepo,
             LivePlayerManager playerManager)
             : base(eventBus, config)
         {
             _pointsRepo = pointsRepo;
+            _settingsRepo = settingsRepo;
             _playerManager = playerManager;
         }
 
         protected override void OnEnable()
         {
+            // Load persisted settings from database
+            LoadPersistedSettings();
+
             EventBus.Subscribe<EntityKilledEvent>(OnEntityKilled);
             EventBus.Subscribe<PlayerLoginEvent>(OnPlayerLogin);
 
@@ -46,6 +56,53 @@ namespace KitsuneCommand.Features
 
             _playtimeTimer?.Dispose();
             _playtimeTimer = null;
+        }
+
+        /// <summary>
+        /// Updates settings in memory and persists to database.
+        /// Called from the settings API controller.
+        /// </summary>
+        public void UpdateSettings(PointsSettings newSettings)
+        {
+            Settings = newSettings;
+            try
+            {
+                var json = JsonConvert.SerializeObject(newSettings);
+                _settingsRepo.Set(SettingsKey, json);
+                Log.Out("[KitsuneCommand] Points settings updated and saved.");
+
+                // Restart the playtime timer if interval changed
+                _playtimeTimer?.Dispose();
+                var intervalMs = Settings.PlaytimeIntervalMinutes * 60 * 1000;
+                _playtimeTimer = new Timer(OnPlaytimeTick, null, intervalMs, intervalMs);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[KitsuneCommand] Failed to persist points settings: {ex.Message}");
+            }
+        }
+
+        private void LoadPersistedSettings()
+        {
+            try
+            {
+                var json = _settingsRepo.Get(SettingsKey);
+                if (!string.IsNullOrEmpty(json))
+                {
+                    var loaded = JsonConvert.DeserializeObject<PointsSettings>(json);
+                    if (loaded != null)
+                    {
+                        Settings = loaded;
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[KitsuneCommand] Failed to load points settings, using defaults: {ex.Message}");
+            }
+
+            // Settings remains as default (from FeatureBase.LoadSettings -> new TSettings())
         }
 
         private void OnEntityKilled(EntityKilledEvent e)

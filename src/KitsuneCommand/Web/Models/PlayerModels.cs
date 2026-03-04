@@ -13,6 +13,7 @@ namespace KitsuneCommand.Web.Models
     {
         public int SlotIndex { get; set; }
         public string ItemName { get; set; }
+        public string DisplayName { get; set; }
         public int Count { get; set; }
         public int Quality { get; set; }
         public float Durability { get; set; }

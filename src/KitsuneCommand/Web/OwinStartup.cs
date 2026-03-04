@@ -106,6 +106,8 @@ namespace KitsuneCommand.Web
 
             config.DependencyResolver = new AutofacWebApiDependencyResolver(_container);
 
+            config.EnsureInitialized();
+
             app.UseAutofacMiddleware(_container);
             app.UseAutofacWebApi(config);
             app.UseWebApi(config);

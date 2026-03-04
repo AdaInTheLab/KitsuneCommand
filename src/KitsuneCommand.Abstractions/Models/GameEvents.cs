@@ -113,4 +113,13 @@ namespace KitsuneCommand.Abstractions.Models
         public int Change { get; set; }
         public string Reason { get; set; }
     }
+
+    public class BloodMoonVoteUpdateEvent
+    {
+        public bool IsActive { get; set; }
+        public int CurrentVotes { get; set; }
+        public int RequiredVotes { get; set; }
+        public int TotalOnline { get; set; }
+        public int BloodMoonDay { get; set; }
+    }
 }

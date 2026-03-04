@@ -31,6 +31,7 @@ namespace KitsuneCommand.WebSocket
             eventBus.Subscribe<LogCallbackEvent>(e => Broadcast("LogCallback", e));
             eventBus.Subscribe<PlayersPositionUpdateEvent>(e => Broadcast("PlayersPositionUpdate", e));
             eventBus.Subscribe<PointsUpdateEvent>(e => Broadcast("PointsUpdate", e));
+            eventBus.Subscribe<BloodMoonVoteUpdateEvent>(e => Broadcast("BloodMoonVoteUpdate", e));
         }
 
         private static void Broadcast<T>(string eventType, T data)

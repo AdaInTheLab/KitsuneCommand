@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { usePermissions } from '@/composables/usePermissions'
 import { usePlayersStore } from '@/stores/players'
 import { useToast } from 'primevue/usetoast'
@@ -33,7 +34,11 @@ import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import MultiSelect from 'primevue/multiselect'
 import Checkbox from 'primevue/checkbox'
+import AutoComplete from 'primevue/autocomplete'
+import { searchGameItems, getGameItemIconUrl } from '@/api/gameItems'
+import type { GameItemInfo } from '@/types'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const confirmService = useConfirm()
@@ -73,6 +78,19 @@ const itemDefForm = ref({ itemName: '', count: 1, quality: 1, durability: 100, d
 const editingItemDefId = ref<number | null>(null)
 const itemDefSaving = ref(false)
 
+// Item name autocomplete
+const itemSuggestions = ref<GameItemInfo[]>([])
+async function onItemNameSearch(event: { query: string }) {
+  try {
+    itemSuggestions.value = await searchGameItems(event.query, 20)
+  } catch {
+    itemSuggestions.value = []
+  }
+}
+function onItemNameSelect(event: { value: GameItemInfo }) {
+  itemDefForm.value.itemName = event.value.itemName
+}
+
 // Command Def dialog
 const showCmdDefDialog = ref(false)
 const cmdDefMode = ref<'create' | 'edit'>('create')
@@ -89,7 +107,7 @@ async function fetchGoods() {
     goodsList.value = result.items
     totalGoods.value = result.total
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load store', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('storeView.failedToLoad'), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -128,7 +146,7 @@ async function openEditGoods(goods: GoodsItem) {
     editingGoodsId.value = goods.id
     showGoodsDialog.value = true
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load goods detail', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('storeView.failedToLoadDetail'), life: 3000 })
   }
 }
 
@@ -138,15 +156,15 @@ async function saveGoods() {
   try {
     if (goodsDialogMode.value === 'create') {
       await createStoreGoods(goodsForm.value)
-      toast.add({ severity: 'success', summary: 'Created', detail: 'Store item created', life: 3000 })
+      toast.add({ severity: 'success', summary: t('common.success'), detail: t('storeView.storeItemCreated'), life: 3000 })
     } else {
       await updateStoreGoods(editingGoodsId.value!, goodsForm.value)
-      toast.add({ severity: 'success', summary: 'Updated', detail: 'Store item updated', life: 3000 })
+      toast.add({ severity: 'success', summary: t('common.success'), detail: t('storeView.storeItemUpdated'), life: 3000 })
     }
     showGoodsDialog.value = false
     fetchGoods()
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('storeView.failedToSave'), life: 3000 })
   } finally {
     goodsSaving.value = false
   }
@@ -154,17 +172,17 @@ async function saveGoods() {
 
 function confirmDeleteGoods(goods: GoodsItem) {
   confirmService.require({
-    message: `Delete "${goods.name}" from the store?`,
-    header: 'Confirm Delete',
+    message: t('storeView.confirmDeleteMessage', { name: goods.name }),
+    header: t('common.confirmDelete'),
     icon: 'pi pi-trash',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
         await deleteStoreGoods(goods.id)
-        toast.add({ severity: 'success', summary: 'Deleted', detail: 'Store item deleted', life: 3000 })
+        toast.add({ severity: 'success', summary: t('storeView.deleted'), detail: t('storeView.storeItemDeleted'), life: 3000 })
         fetchGoods()
       } catch {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete', life: 3000 })
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('storeView.failedToDelete'), life: 3000 })
       }
     },
   })
@@ -179,7 +197,7 @@ async function openBuyDialog(goods: GoodsItem) {
     buyPlayerId.value = ''
     showBuyDialog.value = true
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load goods', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('storeView.failedToLoadGoods'), life: 3000 })
   }
 }
 
@@ -191,11 +209,11 @@ async function executeBuy() {
   buyLoading.value = true
   try {
     const result = await buyStoreGoods(buyTarget.value.id, player.playerId, player.playerName)
-    toast.add({ severity: 'success', summary: 'Purchased!', detail: result.message, life: 5000 })
+    toast.add({ severity: 'success', summary: t('storeView.purchased'), detail: result.message, life: 5000 })
     showBuyDialog.value = false
   } catch (err: any) {
-    const detail = err.response?.data?.message || 'Purchase failed'
-    toast.add({ severity: 'error', summary: 'Error', detail, life: 5000 })
+    const detail = err.response?.data?.message || t('storeView.purchaseFailed')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 5000 })
   } finally {
     buyLoading.value = false
   }
@@ -228,9 +246,9 @@ async function saveItemDef() {
     }
     showItemDefDialog.value = false
     fetchDefinitions()
-    toast.add({ severity: 'success', summary: 'Saved', detail: 'Item definition saved', life: 3000 })
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('storeView.itemDefSaved'), life: 3000 })
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save item definition', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('storeView.failedToSaveItemDef'), life: 3000 })
   } finally {
     itemDefSaving.value = false
   }
@@ -238,17 +256,17 @@ async function saveItemDef() {
 
 function confirmDeleteItemDef(item: ItemDefinition) {
   confirmService.require({
-    message: `Delete item definition "${item.itemName}"?`,
-    header: 'Confirm Delete',
+    message: t('storeView.confirmDeleteItemDef', { name: item.itemName }),
+    header: t('common.confirmDelete'),
     icon: 'pi pi-trash',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
         await deleteItemDefinition(item.id)
         fetchDefinitions()
-        toast.add({ severity: 'success', summary: 'Deleted', life: 3000 })
+        toast.add({ severity: 'success', summary: t('storeView.deleted'), life: 3000 })
       } catch {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete', life: 3000 })
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('storeView.failedToDeleteDef'), life: 3000 })
       }
     },
   })
@@ -281,9 +299,9 @@ async function saveCmdDef() {
     }
     showCmdDefDialog.value = false
     fetchDefinitions()
-    toast.add({ severity: 'success', summary: 'Saved', detail: 'Command definition saved', life: 3000 })
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('storeView.cmdDefSaved'), life: 3000 })
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save command definition', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('storeView.failedToSaveCmdDef'), life: 3000 })
   } finally {
     cmdDefSaving.value = false
   }
@@ -291,17 +309,17 @@ async function saveCmdDef() {
 
 function confirmDeleteCmdDef(cmd: CommandDefinition) {
   confirmService.require({
-    message: `Delete command definition "${cmd.command}"?`,
-    header: 'Confirm Delete',
+    message: t('storeView.confirmDeleteCmdDef', { name: cmd.command }),
+    header: t('common.confirmDelete'),
     icon: 'pi pi-trash',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
         await deleteCommandDefinition(cmd.id)
         fetchDefinitions()
-        toast.add({ severity: 'success', summary: 'Deleted', life: 3000 })
+        toast.add({ severity: 'success', summary: t('storeView.deleted'), life: 3000 })
       } catch {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete', life: 3000 })
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('storeView.failedToDeleteDef'), life: 3000 })
       }
     },
   })
@@ -329,21 +347,21 @@ onMounted(() => {
 <template>
   <div class="store-view">
     <div class="page-header">
-      <h1 class="page-title">Economy</h1>
+      <h1 class="page-title">{{ t('economy.title') }}</h1>
     </div>
 
     <!-- Sub-tab navigation -->
     <div class="sub-tabs">
-      <button class="sub-tab" @click="navigateTo('points')">Points</button>
-      <button class="sub-tab sub-tab--active">Store</button>
-      <button class="sub-tab" @click="navigateTo('history')">History</button>
+      <button class="sub-tab" @click="navigateTo('points')">{{ t('economy.points') }}</button>
+      <button class="sub-tab sub-tab--active">{{ t('economy.store') }}</button>
+      <button class="sub-tab" @click="navigateTo('history')">{{ t('economy.history') }}</button>
     </div>
 
     <!-- Mode toggle (admin only) -->
     <div class="toolbar">
       <div class="mode-toggle" v-if="canManageStore">
         <Button
-          :label="mode === 'browse' ? 'Browse Mode' : 'Manage Mode'"
+          :label="mode === 'browse' ? t('storeView.browseMode') : t('storeView.manageMode')"
           :icon="mode === 'browse' ? 'pi pi-shopping-cart' : 'pi pi-cog'"
           :severity="mode === 'browse' ? 'info' : 'warn'"
           text
@@ -362,15 +380,15 @@ onMounted(() => {
             <Tag :value="`${goods.price} pts`" severity="info" />
           </div>
           <p class="goods-description" v-if="goods.description">{{ goods.description }}</p>
-          <p class="goods-description" v-else style="opacity: 0.5">No description</p>
+          <p class="goods-description" v-else style="opacity: 0.5">{{ t('storeView.noDescription') }}</p>
           <div class="goods-card-footer" v-if="canBuyFromStore">
-            <Button label="Buy for Player" icon="pi pi-shopping-cart" size="small" severity="success" @click="openBuyDialog(goods)" />
+            <Button :label="t('storeView.buyForPlayer')" icon="pi pi-shopping-cart" size="small" severity="success" @click="openBuyDialog(goods)" />
           </div>
         </div>
       </div>
       <div class="empty-state" v-else-if="!loading">
         <i class="pi pi-shopping-cart" style="font-size: 2rem; color: var(--kc-text-secondary)" />
-        <p>No items in the store yet</p>
+        <p>{{ t('storeView.noItemsYet') }}</p>
       </div>
     </template>
 
@@ -378,19 +396,19 @@ onMounted(() => {
     <template v-if="mode === 'manage' && canManageStore">
       <!-- Goods Table -->
       <div class="section-header">
-        <h2 class="section-title">Store Items</h2>
-        <Button label="Add Item" icon="pi pi-plus" size="small" @click="openCreateGoods" />
+        <h2 class="section-title">{{ t('storeView.storeItems') }}</h2>
+        <Button :label="t('storeView.addItem')" icon="pi pi-plus" size="small" @click="openCreateGoods" />
       </div>
 
       <DataTable :value="goodsList" :loading="loading" stripedRows :paginator="true" :rows="pageSize" :totalRecords="totalGoods" :lazy="true" @page="onPage">
-        <Column field="name" header="Name" sortable />
-        <Column field="price" header="Price" sortable style="width: 120px">
+        <Column field="name" :header="t('storeView.name')" sortable />
+        <Column field="price" :header="t('storeView.price')" sortable style="width: 120px">
           <template #body="{ data }">
             <Tag :value="`${data.price} pts`" severity="info" />
           </template>
         </Column>
-        <Column field="description" header="Description" />
-        <Column header="Actions" style="width: 140px">
+        <Column field="description" :header="t('common.description')" />
+        <Column :header="t('common.actions')" style="width: 140px">
           <template #body="{ data }">
             <div class="action-buttons">
               <Button icon="pi pi-pencil" text severity="info" size="small" @click="openEditGoods(data)" />
@@ -402,17 +420,17 @@ onMounted(() => {
 
       <!-- Item Definitions -->
       <div class="section-header">
-        <h2 class="section-title">Item Definitions</h2>
-        <Button label="Add" icon="pi pi-plus" size="small" @click="openCreateItemDef" />
+        <h2 class="section-title">{{ t('storeView.itemDefinitions') }}</h2>
+        <Button :label="t('storeView.addDef')" icon="pi pi-plus" size="small" @click="openCreateItemDef" />
       </div>
 
       <DataTable :value="itemDefs" stripedRows>
-        <Column field="itemName" header="Item Name" />
-        <Column field="count" header="Count" style="width: 80px" />
-        <Column field="quality" header="Quality" style="width: 80px" />
-        <Column field="durability" header="Durability" style="width: 100px" />
-        <Column field="description" header="Description" />
-        <Column header="Actions" style="width: 120px">
+        <Column field="itemName" :header="t('storeView.itemName')" />
+        <Column field="count" :header="t('storeView.count')" style="width: 80px" />
+        <Column field="quality" :header="t('storeView.qualityCol')" style="width: 80px" />
+        <Column field="durability" :header="t('storeView.durability')" style="width: 100px" />
+        <Column field="description" :header="t('common.description')" />
+        <Column :header="t('common.actions')" style="width: 120px">
           <template #body="{ data }">
             <div class="action-buttons">
               <Button icon="pi pi-pencil" text severity="info" size="small" @click="openEditItemDef(data)" />
@@ -424,23 +442,23 @@ onMounted(() => {
 
       <!-- Command Definitions -->
       <div class="section-header">
-        <h2 class="section-title">Command Definitions</h2>
-        <Button label="Add" icon="pi pi-plus" size="small" @click="openCreateCmdDef" />
+        <h2 class="section-title">{{ t('storeView.commandDefinitions') }}</h2>
+        <Button :label="t('storeView.addDef')" icon="pi pi-plus" size="small" @click="openCreateCmdDef" />
       </div>
 
       <DataTable :value="cmdDefs" stripedRows>
-        <Column field="command" header="Command">
+        <Column field="command" :header="t('storeView.command')">
           <template #body="{ data }">
             <code class="cmd-text">{{ data.command }}</code>
           </template>
         </Column>
-        <Column field="runInMainThread" header="Main Thread" style="width: 120px">
+        <Column field="runInMainThread" :header="t('storeView.mainThread')" style="width: 120px">
           <template #body="{ data }">
-            <Tag :value="data.runInMainThread ? 'Yes' : 'No'" :severity="data.runInMainThread ? 'warn' : 'secondary'" />
+            <Tag :value="data.runInMainThread ? t('common.yes') : t('common.no')" :severity="data.runInMainThread ? 'warn' : 'secondary'" />
           </template>
         </Column>
-        <Column field="description" header="Description" />
-        <Column header="Actions" style="width: 120px">
+        <Column field="description" :header="t('common.description')" />
+        <Column :header="t('common.actions')" style="width: 120px">
           <template #body="{ data }">
             <div class="action-buttons">
               <Button icon="pi pi-pencil" text severity="info" size="small" @click="openEditCmdDef(data)" />
@@ -452,126 +470,150 @@ onMounted(() => {
     </template>
 
     <!-- ─── Goods Dialog ─────────────────────────────── -->
-    <Dialog v-model:visible="showGoodsDialog" :header="goodsDialogMode === 'create' ? 'New Store Item' : 'Edit Store Item'" :modal="true" :style="{ width: '500px' }">
+    <Dialog v-model:visible="showGoodsDialog" :header="goodsDialogMode === 'create' ? t('storeView.newStoreItem') : t('storeView.editStoreItem')" :modal="true" :style="{ width: '500px' }">
       <div class="dialog-form">
         <div class="form-field">
-          <label>Name *</label>
+          <label>{{ t('storeView.nameLabel') }}</label>
           <InputText v-model="goodsForm.name" class="w-full" />
         </div>
         <div class="form-field">
-          <label>Price (points)</label>
+          <label>{{ t('storeView.priceLabel') }}</label>
           <InputNumber v-model="goodsForm.price" :min="0" class="w-full" />
         </div>
         <div class="form-field">
-          <label>Description</label>
+          <label>{{ t('common.description') }}</label>
           <Textarea v-model="goodsForm.description" rows="2" class="w-full" />
         </div>
         <div class="form-field">
-          <label>Linked Items</label>
-          <MultiSelect v-model="goodsForm.itemIds" :options="itemDefs" optionLabel="itemName" optionValue="id" placeholder="Select items..." class="w-full" />
+          <label>{{ t('storeView.linkedItems') }}</label>
+          <MultiSelect v-model="goodsForm.itemIds" :options="itemDefs" optionLabel="itemName" optionValue="id" :placeholder="t('storeView.selectItems')" class="w-full" />
         </div>
         <div class="form-field">
-          <label>Linked Commands</label>
-          <MultiSelect v-model="goodsForm.commandIds" :options="cmdDefs" optionLabel="command" optionValue="id" placeholder="Select commands..." class="w-full" />
+          <label>{{ t('storeView.linkedCommands') }}</label>
+          <MultiSelect v-model="goodsForm.commandIds" :options="cmdDefs" optionLabel="command" optionValue="id" :placeholder="t('storeView.selectCommands')" class="w-full" />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="showGoodsDialog = false" />
-        <Button :label="goodsDialogMode === 'create' ? 'Create' : 'Save'" @click="saveGoods" :loading="goodsSaving" :disabled="!goodsForm.name.trim()" />
+        <Button :label="t('common.cancel')" text severity="secondary" @click="showGoodsDialog = false" />
+        <Button :label="goodsDialogMode === 'create' ? t('common.create') : t('common.save')" @click="saveGoods" :loading="goodsSaving" :disabled="!goodsForm.name.trim()" />
       </template>
     </Dialog>
 
     <!-- ─── Buy Dialog ───────────────────────────────── -->
-    <Dialog v-model:visible="showBuyDialog" header="Purchase Item" :modal="true" :style="{ width: '450px' }">
+    <Dialog v-model:visible="showBuyDialog" :header="t('storeView.purchaseItem')" :modal="true" :style="{ width: '450px' }">
       <div class="dialog-form" v-if="buyTarget">
         <p><strong>{{ buyTarget.name }}</strong> — {{ buyTarget.price }} points</p>
         <p class="buy-detail" v-if="buyTarget.description">{{ buyTarget.description }}</p>
 
         <div v-if="buyTarget.items.length > 0" class="buy-section">
-          <strong>Items:</strong>
+          <strong>{{ t('storeView.items') }}</strong>
           <ul>
             <li v-for="item in buyTarget.items" :key="item.id">{{ item.itemName }} x{{ item.count }} (Q{{ item.quality }})</li>
           </ul>
         </div>
         <div v-if="buyTarget.commands.length > 0" class="buy-section">
-          <strong>Commands:</strong>
+          <strong>{{ t('storeView.commands') }}</strong>
           <ul>
             <li v-for="cmd in buyTarget.commands" :key="cmd.id"><code>{{ cmd.command }}</code></li>
           </ul>
         </div>
 
         <div class="form-field">
-          <label>Select Player (must be online)</label>
+          <label>{{ t('storeView.selectPlayerOnline') }}</label>
           <Select
             v-model="buyPlayerId"
             :options="playersStore.playerList"
             optionLabel="playerName"
             optionValue="playerId"
-            placeholder="Select a player..."
+            :placeholder="t('storeView.selectPlayer')"
             class="w-full"
           />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="showBuyDialog = false" />
-        <Button label="Confirm Purchase" severity="success" icon="pi pi-check" @click="executeBuy" :loading="buyLoading" :disabled="!buyPlayerId" />
+        <Button :label="t('common.cancel')" text severity="secondary" @click="showBuyDialog = false" />
+        <Button :label="t('storeView.confirmPurchase')" severity="success" icon="pi pi-check" @click="executeBuy" :loading="buyLoading" :disabled="!buyPlayerId" />
       </template>
     </Dialog>
 
     <!-- ─── Item Definition Dialog ───────────────────── -->
-    <Dialog v-model:visible="showItemDefDialog" :header="itemDefMode === 'create' ? 'New Item Definition' : 'Edit Item Definition'" :modal="true" :style="{ width: '450px' }">
+    <Dialog v-model:visible="showItemDefDialog" :header="itemDefMode === 'create' ? t('storeView.newItemDefinition') : t('storeView.editItemDefinition')" :modal="true" :style="{ width: '450px' }">
       <div class="dialog-form">
         <div class="form-field">
-          <label>Item Name *</label>
-          <InputText v-model="itemDefForm.itemName" class="w-full" placeholder="e.g., gunPistol, drugFirstAidKit" />
+          <label>{{ t('storeView.itemNameLabel') }}</label>
+          <AutoComplete
+            v-model="itemDefForm.itemName"
+            :suggestions="itemSuggestions"
+            @complete="onItemNameSearch"
+            @item-select="onItemNameSelect"
+            optionLabel="displayName"
+            class="w-full"
+            :placeholder="t('storeView.itemNamePlaceholder')"
+          >
+            <template #option="{ option }">
+              <div class="autocomplete-option">
+                <img
+                  v-if="option.iconName"
+                  :src="getGameItemIconUrl(option.iconName, 24)"
+                  :alt="option.iconName"
+                  class="autocomplete-icon"
+                  @error="($event.target as HTMLImageElement).style.display = 'none'"
+                />
+                <div class="autocomplete-text">
+                  <span class="autocomplete-display-name">{{ option.displayName }}</span>
+                  <span class="autocomplete-internal-name">{{ option.itemName }}</span>
+                </div>
+              </div>
+            </template>
+          </AutoComplete>
         </div>
         <div class="form-row">
           <div class="form-field">
-            <label>Count</label>
+            <label>{{ t('storeView.countLabel') }}</label>
             <InputNumber v-model="itemDefForm.count" :min="1" />
           </div>
           <div class="form-field">
-            <label>Quality</label>
+            <label>{{ t('storeView.qualityLabel') }}</label>
             <InputNumber v-model="itemDefForm.quality" :min="1" :max="6" />
           </div>
           <div class="form-field">
-            <label>Durability</label>
+            <label>{{ t('storeView.durabilityLabel') }}</label>
             <InputNumber v-model="itemDefForm.durability" :min="1" />
           </div>
         </div>
         <div class="form-field">
-          <label>Description</label>
+          <label>{{ t('common.description') }}</label>
           <Textarea v-model="itemDefForm.description" rows="2" class="w-full" />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="showItemDefDialog = false" />
-        <Button :label="itemDefMode === 'create' ? 'Create' : 'Save'" @click="saveItemDef" :loading="itemDefSaving" :disabled="!itemDefForm.itemName.trim()" />
+        <Button :label="t('common.cancel')" text severity="secondary" @click="showItemDefDialog = false" />
+        <Button :label="itemDefMode === 'create' ? t('common.create') : t('common.save')" @click="saveItemDef" :loading="itemDefSaving" :disabled="!itemDefForm.itemName.trim()" />
       </template>
     </Dialog>
 
     <!-- ─── Command Definition Dialog ────────────────── -->
-    <Dialog v-model:visible="showCmdDefDialog" :header="cmdDefMode === 'create' ? 'New Command Definition' : 'Edit Command Definition'" :modal="true" :style="{ width: '450px' }">
+    <Dialog v-model:visible="showCmdDefDialog" :header="cmdDefMode === 'create' ? t('storeView.newCommandDefinition') : t('storeView.editCommandDefinition')" :modal="true" :style="{ width: '450px' }">
       <div class="dialog-form">
         <div class="form-field">
-          <label>Command *</label>
-          <InputText v-model="cmdDefForm.command" class="w-full" placeholder="e.g., give {entityId} gunAK47 1 6" />
+          <label>{{ t('storeView.commandLabel') }}</label>
+          <InputText v-model="cmdDefForm.command" class="w-full" :placeholder="t('storeView.commandPlaceholder')" />
         </div>
         <div class="form-field checkbox-field">
           <Checkbox v-model="cmdDefForm.runInMainThread" :binary="true" inputId="mainThread" />
-          <label for="mainThread">Run on Main Thread</label>
+          <label for="mainThread">{{ t('storeView.runOnMainThread') }}</label>
         </div>
         <div class="form-field">
-          <label>Description</label>
+          <label>{{ t('common.description') }}</label>
           <Textarea v-model="cmdDefForm.description" rows="2" class="w-full" />
         </div>
         <p class="hint-text">
-          Available placeholders: <code>{entityId}</code>, <code>{playerId}</code>, <code>{playerName}</code>
+          {{ t('storeView.availablePlaceholders') }}
         </p>
       </div>
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="showCmdDefDialog = false" />
-        <Button :label="cmdDefMode === 'create' ? 'Create' : 'Save'" @click="saveCmdDef" :loading="cmdDefSaving" :disabled="!cmdDefForm.command.trim()" />
+        <Button :label="t('common.cancel')" text severity="secondary" @click="showCmdDefDialog = false" />
+        <Button :label="cmdDefMode === 'create' ? t('common.create') : t('common.save')" @click="saveCmdDef" :loading="cmdDefSaving" :disabled="!cmdDefForm.command.trim()" />
       </template>
     </Dialog>
   </div>
@@ -618,6 +660,12 @@ onMounted(() => {
 .buy-section ul { margin: 0.25rem 0; padding-left: 1.5rem; }
 .hint-text { font-size: 0.8rem; color: var(--kc-text-secondary); margin: 0; }
 .hint-text code { background: rgba(0,0,0,0.2); padding: 0.1rem 0.3rem; border-radius: 3px; }
+
+.autocomplete-option { display: flex; align-items: center; gap: 0.5rem; }
+.autocomplete-icon { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+.autocomplete-text { display: flex; flex-direction: column; }
+.autocomplete-display-name { font-size: 0.85rem; font-weight: 500; }
+.autocomplete-internal-name { font-size: 0.7rem; color: var(--kc-text-secondary); }
 
 .empty-state { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 2rem; color: var(--kc-text-secondary); }
 

@@ -1,4 +1,5 @@
 import apiClient from './client'
+import type { DashboardStats } from '@/types'
 
 export interface ServerInfo {
   serverName: string
@@ -8,6 +9,8 @@ export interface ServerInfo {
   gameName: string
   gameMode: string
   difficulty: number
+  dayNightLength: number
+  bloodMoonFrequency: number
   currentDay: number
   currentTime: string
   onlinePlayers: number
@@ -36,4 +39,9 @@ export async function getServerStats(): Promise<ServerStats> {
 export async function executeCommand(command: string): Promise<string> {
   const response = await apiClient.post('/api/server/command', { command })
   return response.data.data.output
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const response = await apiClient.get('/api/dashboard/stats')
+  return response.data.data
 }

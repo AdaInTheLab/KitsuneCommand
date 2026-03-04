@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { usePlayersStore } from '@/stores/players'
 import { getOnlinePlayers, kickPlayer, banPlayer } from '@/api/players'
 import { usePermissions } from '@/composables/usePermissions'
@@ -14,6 +15,7 @@ import Tag from 'primevue/tag'
 import ProgressBar from 'primevue/progressbar'
 import type { PlayerInfo } from '@/types'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
@@ -35,7 +37,7 @@ async function fetchPlayers() {
     const players = await getOnlinePlayers()
     playersStore.setPlayers(players)
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to fetch players', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('players.failedToFetch'), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -47,16 +49,16 @@ function viewPlayer(player: PlayerInfo) {
 
 function confirmKick(player: PlayerInfo) {
   confirm.require({
-    message: `Kick ${player.playerName} from the server?`,
-    header: 'Confirm Kick',
+    message: t('players.confirmKickMessage', { name: player.playerName }),
+    header: t('players.confirmKickHeader'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-warning',
     accept: async () => {
       try {
         await kickPlayer(player.entityId)
-        toast.add({ severity: 'success', summary: 'Kicked', detail: `${player.playerName} has been kicked`, life: 3000 })
+        toast.add({ severity: 'success', summary: t('players.kicked'), detail: t('players.kickedDetail', { name: player.playerName }), life: 3000 })
       } catch {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to kick player', life: 3000 })
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('players.failedToKick'), life: 3000 })
       }
     },
   })
@@ -64,16 +66,16 @@ function confirmKick(player: PlayerInfo) {
 
 function confirmBan(player: PlayerInfo) {
   confirm.require({
-    message: `Ban ${player.playerName} from the server? This cannot be easily undone.`,
-    header: 'Confirm Ban',
+    message: t('players.confirmBanMessage', { name: player.playerName }),
+    header: t('players.confirmBanHeader'),
     icon: 'pi pi-ban',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
         await banPlayer(player.entityId)
-        toast.add({ severity: 'success', summary: 'Banned', detail: `${player.playerName} has been banned`, life: 3000 })
+        toast.add({ severity: 'success', summary: t('players.banned'), detail: t('players.bannedDetail', { name: player.playerName }), life: 3000 })
       } catch {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to ban player', life: 3000 })
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('players.failedToBan'), life: 3000 })
       }
     },
   })
@@ -89,14 +91,14 @@ onMounted(fetchPlayers)
 <template>
   <div class="players-view">
     <div class="page-header">
-      <h1 class="page-title">Players</h1>
-      <Tag :value="`${playersStore.onlineCount} online`" severity="info" />
+      <h1 class="page-title">{{ t('players.title') }}</h1>
+      <Tag :value="t('players.online', { n: playersStore.onlineCount })" severity="info" />
     </div>
 
     <div class="toolbar">
       <span class="p-input-icon-left search-wrapper">
         <i class="pi pi-search" />
-        <InputText v-model="searchFilter" placeholder="Search players..." class="search-input" />
+        <InputText v-model="searchFilter" :placeholder="t('players.searchPlaceholder')" class="search-input" />
       </span>
       <Button icon="pi pi-refresh" text severity="secondary" @click="fetchPlayers" :loading="loading" />
     </div>
@@ -111,40 +113,40 @@ onMounted(fetchPlayers)
       :rowHover="true"
       @row-click="(e: any) => viewPlayer(e.data)"
     >
-      <Column field="playerName" header="Name" sortable>
+      <Column field="playerName" :header="t('players.name')" sortable>
         <template #body="{ data }">
           <div class="player-name">
             <i class="pi pi-user" />
             <span>{{ data.playerName }}</span>
-            <Tag v-if="data.isAdmin" value="Admin" severity="warn" class="admin-tag" />
+            <Tag v-if="data.isAdmin" :value="t('players.admin')" severity="warn" class="admin-tag" />
           </div>
         </template>
       </Column>
 
-      <Column field="level" header="Level" sortable style="width: 80px" />
+      <Column field="level" :header="t('players.level')" sortable style="width: 80px" />
 
-      <Column header="Health" style="width: 150px">
+      <Column :header="t('players.health')" style="width: 150px">
         <template #body="{ data }">
           <ProgressBar :value="data.health" :showValue="false" class="health-bar" style="height: 8px" />
           <span class="bar-label">{{ Math.round(data.health) }}</span>
         </template>
       </Column>
 
-      <Column header="Position" style="width: 180px">
+      <Column :header="t('players.position')" style="width: 180px">
         <template #body="{ data }">
           <span class="position-text">{{ formatPosition(data) }}</span>
         </template>
       </Column>
 
-      <Column field="zombieKills" header="Z Kills" sortable style="width: 80px" />
-      <Column field="playerKills" header="P Kills" sortable style="width: 80px" />
-      <Column field="deaths" header="Deaths" sortable style="width: 80px" />
+      <Column field="zombieKills" :header="t('players.zKills')" sortable style="width: 80px" />
+      <Column field="playerKills" :header="t('players.pKills')" sortable style="width: 80px" />
+      <Column field="deaths" :header="t('players.deaths')" sortable style="width: 80px" />
 
-      <Column v-if="canKickPlayers || canBanPlayers" header="Actions" style="width: 120px">
+      <Column v-if="canKickPlayers || canBanPlayers" :header="t('players.actions')" style="width: 120px">
         <template #body="{ data }">
           <div class="action-buttons" @click.stop>
-            <Button v-if="canKickPlayers" icon="pi pi-sign-out" text severity="warning" size="small" @click="confirmKick(data)" title="Kick" />
-            <Button v-if="canBanPlayers" icon="pi pi-ban" text severity="danger" size="small" @click="confirmBan(data)" title="Ban" />
+            <Button v-if="canKickPlayers" icon="pi pi-sign-out" text severity="warning" size="small" @click="confirmKick(data)" :title="t('playerDetail.kick')" />
+            <Button v-if="canBanPlayers" icon="pi pi-ban" text severity="danger" size="small" @click="confirmBan(data)" :title="t('playerDetail.ban')" />
           </div>
         </template>
       </Column>
@@ -152,7 +154,7 @@ onMounted(fetchPlayers)
       <template #empty>
         <div class="empty-state">
           <i class="pi pi-users" style="font-size: 2rem; color: var(--kc-text-secondary)" />
-          <p>No players online</p>
+          <p>{{ t('players.noPlayersOnline') }}</p>
         </div>
       </template>
     </DataTable>

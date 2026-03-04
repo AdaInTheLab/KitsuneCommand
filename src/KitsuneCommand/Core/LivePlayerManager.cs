@@ -278,10 +278,15 @@ namespace KitsuneCommand.Core
                 var stack = items[i];
                 if (stack.IsEmpty()) continue;
 
+                var slotItemName = stack.itemValue.ItemClass?.GetItemName() ?? "unknown";
+                var slotDisplayName = slotItemName;
+                try { slotDisplayName = Localization.Get(slotItemName); } catch { }
+
                 slots.Add(new InventorySlot
                 {
                     SlotIndex = i,
-                    ItemName = stack.itemValue.ItemClass?.GetItemName() ?? "unknown",
+                    ItemName = slotItemName,
+                    DisplayName = slotDisplayName,
                     Count = stack.count,
                     Quality = (int)stack.itemValue.Quality,
                     Durability = stack.itemValue.UseTimes,

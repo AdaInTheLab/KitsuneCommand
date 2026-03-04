@@ -14,6 +14,13 @@ export const useServerStore = defineStore('server', () => {
   const gameMinute = ref(0)
   const isBloodMoon = ref(false)
   const activity = ref<ActivityItem[]>([])
+  const bloodMoonVote = ref({
+    isActive: false,
+    currentVotes: 0,
+    requiredVotes: 0,
+    totalOnline: 0,
+    bloodMoonDay: 0,
+  })
 
   let activityId = 0
 
@@ -22,6 +29,10 @@ export const useServerStore = defineStore('server', () => {
     gameHour.value = data.hour
     gameMinute.value = data.minute
     isBloodMoon.value = data.isBloodMoon
+  }
+
+  function updateBloodMoonVote(data: { isActive: boolean; currentVotes: number; requiredVotes: number; totalOnline: number; bloodMoonDay: number }) {
+    bloodMoonVote.value = data
   }
 
   function addActivity(type: ActivityItem['type'], message: string) {
@@ -37,5 +48,5 @@ export const useServerStore = defineStore('server', () => {
     }
   }
 
-  return { gameDay, gameHour, gameMinute, isBloodMoon, activity, updateGameTime, addActivity }
+  return { gameDay, gameHour, gameMinute, isBloodMoon, activity, bloodMoonVote, updateGameTime, updateBloodMoonVote, addActivity }
 })

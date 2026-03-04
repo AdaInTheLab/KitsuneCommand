@@ -50,7 +50,8 @@ namespace KitsuneCommand.Services
                     return false;
                 }
 
-                _biomeBitmap = SKBitmap.Decode(biomesPath);
+                var biomeBytes = File.ReadAllBytes(biomesPath);
+                _biomeBitmap = SKBitmap.Decode(biomeBytes);
                 if (_biomeBitmap == null)
                 {
                     Log.Warning("[KitsuneCommand] MapTileRenderer: Failed to decode biomes.png.");
@@ -158,7 +159,7 @@ namespace KitsuneCommand.Services
             using var subset = new SKBitmap(srcW, srcH);
             _biomeBitmap.ExtractSubset(subset, srcRect);
 
-            using var tile = subset.Resize(new SKImageInfo(TileSize, TileSize), SKSamplingOptions.Default);
+            using var tile = subset.Resize(new SKImageInfo(TileSize, TileSize), SKFilterQuality.Medium);
             if (tile == null) return null;
 
             // Apply height shading if heightmap is available

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useEconomyStore } from '@/stores/economy'
 import { usePermissions } from '@/composables/usePermissions'
 import { getPointsList, adjustPoints } from '@/api/points'
@@ -15,6 +16,7 @@ import Textarea from 'primevue/textarea'
 import Tag from 'primevue/tag'
 import type { PointsInfo } from '@/api/points'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const economyStore = useEconomyStore()
@@ -47,7 +49,7 @@ async function fetchPoints() {
     economyStore.setPointsList(result.items, result.total)
     totalRecords.value = result.total
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load points', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('pointsView.failedToLoad'), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -82,21 +84,21 @@ async function submitAdjust() {
     await adjustPoints(adjustTarget.value.id, adjustAmount.value, adjustReason.value || undefined)
     toast.add({
       severity: 'success',
-      summary: 'Points Adjusted',
+      summary: t('pointsView.adjustedSummary'),
       detail: `${adjustAmount.value > 0 ? '+' : ''}${adjustAmount.value} points for ${adjustTarget.value.playerName}`,
       life: 3000,
     })
     showAdjustDialog.value = false
     fetchPoints()
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to adjust points', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('pointsView.failedToAdjust'), life: 3000 })
   } finally {
     adjustLoading.value = false
   }
 }
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'Never'
+  if (!dateStr) return t('common.never')
   const d = new Date(dateStr + 'Z')
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
@@ -113,20 +115,20 @@ onMounted(fetchPoints)
 <template>
   <div class="points-view">
     <div class="page-header">
-      <h1 class="page-title">Economy</h1>
+      <h1 class="page-title">{{ t('economy.title') }}</h1>
     </div>
 
     <!-- Sub-tab navigation -->
     <div class="sub-tabs">
-      <button class="sub-tab sub-tab--active" @click="activeTab = 'points'">Points</button>
-      <button class="sub-tab" @click="navigateTo('store')">Store</button>
-      <button class="sub-tab" @click="navigateTo('history')">History</button>
+      <button class="sub-tab sub-tab--active" @click="activeTab = 'points'">{{ t('economy.points') }}</button>
+      <button class="sub-tab" @click="navigateTo('store')">{{ t('economy.store') }}</button>
+      <button class="sub-tab" @click="navigateTo('history')">{{ t('economy.history') }}</button>
     </div>
 
     <div class="toolbar">
       <span class="p-input-icon-left search-wrapper">
         <i class="pi pi-search" />
-        <InputText v-model="searchFilter" placeholder="Search by player name..." class="search-input" />
+        <InputText v-model="searchFilter" :placeholder="t('pointsView.searchPlaceholder')" class="search-input" />
       </span>
       <Button icon="pi pi-refresh" text severity="secondary" @click="fetchPoints" :loading="loading" />
     </div>
@@ -145,7 +147,7 @@ onMounted(fetchPoints)
       :sortOrder="-1"
       class="points-table"
     >
-      <Column field="playerName" header="Player" sortable>
+      <Column field="playerName" :header="t('pointsView.player')" sortable>
         <template #body="{ data }">
           <div class="player-name">
             <i class="pi pi-user" />
@@ -154,19 +156,19 @@ onMounted(fetchPoints)
         </template>
       </Column>
 
-      <Column field="points" header="Points" sortable style="width: 150px">
+      <Column field="points" :header="t('pointsView.points')" sortable style="width: 150px">
         <template #body="{ data }">
           <Tag :value="data.points.toLocaleString()" severity="info" class="points-tag" />
         </template>
       </Column>
 
-      <Column field="lastSignInAt" header="Last Sign-In" style="width: 200px">
+      <Column field="lastSignInAt" :header="t('pointsView.lastSignIn')" style="width: 200px">
         <template #body="{ data }">
           <span class="date-text">{{ formatDate(data.lastSignInAt) }}</span>
         </template>
       </Column>
 
-      <Column v-if="canAdjustPoints" header="Actions" style="width: 100px">
+      <Column v-if="canAdjustPoints" :header="t('pointsView.actions')" style="width: 100px">
         <template #body="{ data }">
           <div class="action-buttons">
             <Button
@@ -175,7 +177,7 @@ onMounted(fetchPoints)
               severity="info"
               size="small"
               @click="openAdjustDialog(data)"
-              title="Adjust Points"
+              :title="t('pointsView.adjustPoints')"
             />
           </div>
         </template>
@@ -184,8 +186,8 @@ onMounted(fetchPoints)
       <template #empty>
         <div class="empty-state">
           <i class="pi pi-wallet" style="font-size: 2rem; color: var(--kc-text-secondary)" />
-          <p>No points data yet</p>
-          <span class="empty-hint">Players will appear here once they log in to the server.</span>
+          <p>{{ t('pointsView.noPointsYet') }}</p>
+          <span class="empty-hint">{{ t('pointsView.pointsHint') }}</span>
         </div>
       </template>
     </DataTable>
@@ -193,32 +195,32 @@ onMounted(fetchPoints)
     <!-- Adjust Points Dialog -->
     <Dialog
       v-model:visible="showAdjustDialog"
-      header="Adjust Points"
+      :header="t('pointsView.adjustPoints')"
       :modal="true"
       :style="{ width: '400px' }"
     >
       <div class="adjust-form" v-if="adjustTarget">
         <p class="adjust-player">
-          Player: <strong>{{ adjustTarget.playerName }}</strong>
+          {{ t('pointsView.playerLabel') }}: <strong>{{ adjustTarget.playerName }}</strong>
           <br />
-          Current: <Tag :value="adjustTarget.points.toLocaleString()" severity="info" />
+          {{ t('pointsView.currentLabel') }}: <Tag :value="adjustTarget.points.toLocaleString()" severity="info" />
         </p>
 
         <div class="form-field">
-          <label>Amount (positive to add, negative to deduct)</label>
+          <label>{{ t('pointsView.amountLabel') }}</label>
           <InputNumber v-model="adjustAmount" showButtons :min="-999999" :max="999999" />
         </div>
 
         <div class="form-field">
-          <label>Reason (optional)</label>
-          <Textarea v-model="adjustReason" rows="2" class="w-full" placeholder="e.g., Event reward, Admin correction" />
+          <label>{{ t('pointsView.reasonLabel') }}</label>
+          <Textarea v-model="adjustReason" rows="2" class="w-full" :placeholder="t('pointsView.reasonPlaceholder')" />
         </div>
       </div>
 
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="showAdjustDialog = false" />
+        <Button :label="t('common.cancel')" text severity="secondary" @click="showAdjustDialog = false" />
         <Button
-          label="Apply"
+          :label="t('common.apply')"
           severity="info"
           @click="submitAdjust"
           :loading="adjustLoading"

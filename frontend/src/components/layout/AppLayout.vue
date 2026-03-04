@@ -1,28 +1,57 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppWebSocket } from '@/composables/useAppWebSocket'
+import { useI18n } from 'vue-i18n'
+import { SUPPORTED_LOCALES, setLocale, type LocaleCode } from '@/i18n'
 import Button from 'primevue/button'
+import Select from 'primevue/select'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const appWs = useAppWebSocket()
+const { t, locale } = useI18n()
 const sidebarCollapsed = ref(false)
 const mobileMenuOpen = ref(false)
 
-const navItems = [
-  { label: 'Dashboard', icon: 'pi pi-home', route: '/' },
-  { label: 'Players', icon: 'pi pi-users', route: '/players' },
-  { label: 'Console', icon: 'pi pi-code', route: '/console' },
-  { label: 'Map', icon: 'pi pi-map', route: '/map' },
-  { label: 'Chat', icon: 'pi pi-comments', route: '/chat' },
-  { label: 'Teleport', icon: 'pi pi-compass', route: '/teleport/cities' },
-  { label: 'CD Keys', icon: 'pi pi-key', route: '/cdkeys' },
-  { label: 'Economy', icon: 'pi pi-wallet', route: '/economy/points' },
-  { label: 'Settings', icon: 'pi pi-cog', route: '/settings' },
-]
+const navItems = computed(() => [
+  { label: t('nav.dashboard'), icon: 'pi pi-home', route: '/' },
+  { label: t('nav.players'), icon: 'pi pi-users', route: '/players' },
+  { label: t('nav.map'), icon: 'pi pi-map', route: '/map' },
+  { label: t('nav.chat'), icon: 'pi pi-comments', route: '/chat' },
+  { label: t('nav.teleport'), icon: 'pi pi-compass', route: '/teleport/cities' },
+  { label: t('nav.vipGifts'), icon: 'pi pi-gift', route: '/vipgifts' },
+  { label: t('nav.schedules'), icon: 'pi pi-clock', route: '/schedules' },
+  { label: t('nav.cdKeys'), icon: 'pi pi-key', route: '/cdkeys' },
+  { label: t('nav.economy'), icon: 'pi pi-wallet', route: '/economy/points' },
+  { label: t('nav.itemDatabase'), icon: 'pi pi-database', route: '/items' },
+  { type: 'divider', label: t('nav.serverManagement') },
+  { label: t('nav.serverControl'), icon: 'pi pi-server', route: '/server' },
+  { label: t('nav.console'), icon: 'pi pi-code', route: '/console' },
+  { label: t('nav.configEditor'), icon: 'pi pi-file-edit', route: '/config' },
+  { label: t('nav.mods'), icon: 'pi pi-box', route: '/mods' },
+  { label: t('nav.backups'), icon: 'pi pi-cloud-download', route: '/backups' },
+  { type: 'divider' },
+  { label: t('nav.settings'), icon: 'pi pi-cog', route: '/settings' },
+])
+
+const localeOptions = SUPPORTED_LOCALES.map((l) => ({ label: l.name, value: l.code }))
+const selectedLocale = ref(locale.value as string)
+
+watch(selectedLocale, (val) => {
+  setLocale(val as LocaleCode)
+})
+
+// Cycle through languages when sidebar is collapsed
+const localeIndex = computed(() => SUPPORTED_LOCALES.findIndex((l) => l.code === locale.value))
+function cycleLocale() {
+  const nextIdx = (localeIndex.value + 1) % SUPPORTED_LOCALES.length
+  const next = SUPPORTED_LOCALES[nextIdx].code
+  selectedLocale.value = next
+  setLocale(next)
+}
 
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
@@ -69,7 +98,7 @@ onUnmounted(() => {
     <aside class="sidebar" :class="{ collapsed: sidebarCollapsed, 'mobile-open': mobileMenuOpen }">
       <div class="sidebar-header">
         <div class="brand" v-if="!sidebarCollapsed">
-          <h2 class="brand-name">KitsuneCommand</h2>
+          <h2 class="brand-name">{{ t('layout.brandName') }}</h2>
           <span class="brand-version">v2.0.0</span>
         </div>
         <Button
@@ -91,24 +120,50 @@ onUnmounted(() => {
       </div>
 
       <nav class="sidebar-nav">
-        <router-link
-          v-for="item in navItems"
-          :key="item.route"
-          :to="item.route"
-          class="nav-item"
-          active-class="nav-item--active"
-          :title="sidebarCollapsed ? item.label : undefined"
-        >
-          <i :class="item.icon" class="nav-icon"></i>
-          <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
-        </router-link>
+        <template v-for="(item, idx) in navItems" :key="item.route || `div-${idx}`">
+          <div v-if="item.type === 'divider'" class="nav-divider">
+            <span v-if="item.label && !sidebarCollapsed" class="divider-label">{{ item.label }}</span>
+            <hr v-else class="divider-line" />
+          </div>
+          <router-link
+            v-else
+            :to="item.route!"
+            class="nav-item"
+            active-class="nav-item--active"
+            :title="sidebarCollapsed ? item.label : undefined"
+          >
+            <i :class="item.icon" class="nav-icon"></i>
+            <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
+          </router-link>
+        </template>
       </nav>
 
       <div class="sidebar-footer">
+        <!-- Language switcher -->
+        <div class="lang-switcher" v-if="!sidebarCollapsed">
+          <Select
+            v-model="selectedLocale"
+            :options="localeOptions"
+            optionLabel="label"
+            optionValue="value"
+            class="lang-select"
+          />
+        </div>
+        <Button
+          v-else
+          icon="pi pi-globe"
+          text
+          rounded
+          severity="secondary"
+          @click="cycleLocale"
+          class="lang-cycle-btn"
+          :title="SUPPORTED_LOCALES[localeIndex]?.name"
+        />
+
         <!-- Connection indicator -->
         <div class="ws-status" v-if="!sidebarCollapsed">
           <i class="pi pi-circle-fill" :class="{ connected: appWs.isConnected.value }" />
-          <span>{{ appWs.isConnected.value ? 'Live' : 'Offline' }}</span>
+          <span>{{ appWs.isConnected.value ? t('layout.live') : t('layout.offline') }}</span>
         </div>
         <div class="user-info" v-if="!sidebarCollapsed">
           <i class="pi pi-user"></i>
@@ -117,7 +172,7 @@ onUnmounted(() => {
         </div>
         <Button
           :icon="'pi pi-sign-out'"
-          :label="sidebarCollapsed ? undefined : 'Logout'"
+          :label="sidebarCollapsed ? undefined : t('layout.logout')"
           text
           severity="danger"
           size="small"
@@ -177,7 +232,20 @@ onUnmounted(() => {
 .nav-item:hover { background: rgba(0, 212, 255, 0.08); color: var(--kc-text-primary); }
 .nav-item--active { background: rgba(0, 212, 255, 0.15); color: var(--kc-cyan); }
 .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+
+.nav-divider { padding: 0.5rem 1rem 0.25rem; }
+.divider-label {
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--kc-text-secondary); font-weight: 600; opacity: 0.7;
+}
+.divider-line {
+  border: none; border-top: 1px solid var(--kc-border); margin: 0.25rem 0;
+}
 .sidebar-footer { padding: 1rem; border-top: 1px solid var(--kc-border); }
+
+.lang-switcher { margin-bottom: 0.5rem; }
+.lang-select { width: 100%; font-size: 0.8rem; }
+.lang-cycle-btn { margin-bottom: 0.5rem; }
 
 .ws-status {
   display: flex; align-items: center; gap: 0.5rem;

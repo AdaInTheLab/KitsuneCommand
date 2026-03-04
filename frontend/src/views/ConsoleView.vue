@@ -1,24 +1,32 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { usePermissions } from '@/composables/usePermissions'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 
+const { t } = useI18n()
 const ws = useWebSocket()
 const { canExecuteCommands } = usePermissions()
 const commandInput = ref('')
-const outputLines = ref<{ type: 'command' | 'output' | 'log' | 'error'; text: string }[]>([])
+const outputLines = ref<{ type: 'command' | 'output' | 'log' | 'warn' | 'error'; text: string }[]>([])
 const outputEl = ref<HTMLElement | null>(null)
 const commandHistory = ref<string[]>([])
 const historyIndex = ref(-1)
+const autoScroll = ref(true)
 
 function scrollToBottom() {
+  if (!autoScroll.value) return
   nextTick(() => {
     if (outputEl.value) {
       outputEl.value.scrollTop = outputEl.value.scrollHeight
     }
   })
+}
+
+function clearLog() {
+  outputLines.value = []
 }
 
 function sendCommand() {
@@ -54,6 +62,12 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
+function classifyLogLevel(logLevel: string): 'error' | 'warn' | 'log' {
+  if (logLevel === 'Error' || logLevel === 'Exception') return 'error'
+  if (logLevel === 'Warning') return 'warn'
+  return 'log'
+}
+
 onMounted(() => {
   ws.on<{ command: string; output: string }>('CommandResult', (data) => {
     if (data.output) {
@@ -65,7 +79,7 @@ onMounted(() => {
   })
 
   ws.on<{ message: string; logLevel: string }>('LogCallback', (data) => {
-    const type = data.logLevel === 'Error' || data.logLevel === 'Exception' ? 'error' : 'log'
+    const type = classifyLogLevel(data.logLevel)
     outputLines.value.push({ type, text: data.message })
     // Keep buffer manageable
     if (outputLines.value.length > 2000) {
@@ -78,7 +92,7 @@ onMounted(() => {
 
   outputLines.value.push({
     type: 'log',
-    text: 'KitsuneCommand Console - Type commands below. Use Up/Down arrows for command history.',
+    text: t('console.welcomeMessage'),
   })
 })
 
@@ -90,10 +104,28 @@ onUnmounted(() => {
 <template>
   <div class="console-view">
     <div class="page-header">
-      <h1 class="page-title">Console</h1>
-      <div class="connection-status" :class="{ connected: ws.isConnected.value }">
-        <i class="pi pi-circle-fill" />
-        {{ ws.isConnected.value ? 'Connected' : 'Disconnected' }}
+      <h1 class="page-title">{{ t('console.title') }}</h1>
+      <div class="header-actions">
+        <Button
+          :icon="autoScroll ? 'pi pi-lock' : 'pi pi-lock-open'"
+          :label="t('console.autoScroll')"
+          :severity="autoScroll ? 'info' : 'secondary'"
+          text
+          size="small"
+          @click="autoScroll = !autoScroll"
+        />
+        <Button
+          icon="pi pi-trash"
+          :label="t('console.clearLog')"
+          text
+          severity="secondary"
+          size="small"
+          @click="clearLog"
+        />
+        <div class="connection-status" :class="{ connected: ws.isConnected.value }">
+          <i class="pi pi-circle-fill" />
+          {{ ws.isConnected.value ? t('console.connected') : t('console.disconnected') }}
+        </div>
       </div>
     </div>
 
@@ -111,7 +143,7 @@ onUnmounted(() => {
         <span class="prompt">&gt;</span>
         <InputText
           v-model="commandInput"
-          :placeholder="canExecuteCommands ? 'Enter command...' : 'Command execution requires admin access'"
+          :placeholder="canExecuteCommands ? t('console.enterCommand') : t('console.adminRequired')"
           class="console-input"
           @keydown.enter="sendCommand"
           @keydown="handleKeyDown"
@@ -145,6 +177,12 @@ onUnmounted(() => {
 .page-title {
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .connection-status {
@@ -202,6 +240,10 @@ onUnmounted(() => {
   color: #8b949e;
 }
 
+.console-line--warn {
+  color: #d29922;
+}
+
 .console-line--error {
   color: #f85149;
 }
@@ -237,5 +279,6 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .console-output { overflow-x: auto; }
+  .header-actions { flex-wrap: wrap; }
 }
 </style>

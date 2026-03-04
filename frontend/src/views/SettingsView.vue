@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { changePassword } from '@/api/auth'
 import { getUsers, createUser, updateUser, resetUserPassword, deleteUser } from '@/api/users'
-import { getChatCommandSettings, updateChatCommandSettings } from '@/api/settings'
+import {
+  getChatCommandSettings, updateChatCommandSettings,
+  getPointsSettings, updatePointsSettings,
+  getTeleportSettings, updateTeleportSettings,
+  getStoreSettings, updateStoreSettings,
+} from '@/api/settings'
+import { getVoteSettings, updateVoteSettings } from '@/api/bloodmoonvote'
 import type { UserResponse, CreateUserRequest } from '@/api/users'
-import type { ChatCommandSettings } from '@/types'
+import type { ChatCommandSettings, PointsSettings, TeleportSettings, StoreSettings, BloodMoonVoteSettings } from '@/types'
 import { usePermissions } from '@/composables/usePermissions'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -24,6 +31,7 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 
+const { t } = useI18n()
 const toast = useToast()
 const confirmDialog = useConfirm()
 const { isAdmin } = usePermissions()
@@ -36,24 +44,24 @@ const changingPassword = ref(false)
 
 async function handleChangePassword() {
   if (!newPassword.value || newPassword.value.length < 8) {
-    toast.add({ severity: 'warn', summary: 'Validation', detail: 'New password must be at least 8 characters', life: 3000 })
+    toast.add({ severity: 'warn', summary: t('common.validation'), detail: t('settings.passwordMinLength'), life: 3000 })
     return
   }
   if (newPassword.value !== confirmNewPassword.value) {
-    toast.add({ severity: 'warn', summary: 'Validation', detail: 'Passwords do not match', life: 3000 })
+    toast.add({ severity: 'warn', summary: t('common.validation'), detail: t('settings.passwordsDoNotMatch'), life: 3000 })
     return
   }
 
   changingPassword.value = true
   try {
     await changePassword(currentPassword.value, newPassword.value)
-    toast.add({ severity: 'success', summary: 'Success', detail: 'Password changed successfully', life: 3000 })
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.passwordChanged'), life: 3000 })
     currentPassword.value = ''
     newPassword.value = ''
     confirmNewPassword.value = ''
   } catch (err: any) {
-    const detail = err.response?.data?.message || 'Failed to change password'
-    toast.add({ severity: 'error', summary: 'Error', detail, life: 3000 })
+    const detail = err.response?.data?.message || t('settings.failedToChangePassword')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
   } finally {
     changingPassword.value = false
   }
@@ -80,11 +88,16 @@ const resetTarget = ref<UserResponse | null>(null)
 const resetNewPassword = ref('')
 const resettingPassword = ref(false)
 
-const roleOptions = [
-  { label: 'Admin', value: 'admin' },
-  { label: 'Moderator', value: 'moderator' },
-  { label: 'Viewer', value: 'viewer' },
-]
+const roleOptions = computed(() => [
+  { label: t('settings.admin'), value: 'admin' },
+  { label: t('settings.moderator'), value: 'moderator' },
+  { label: t('settings.viewer'), value: 'viewer' },
+])
+
+const activeStatusOptions = computed(() => [
+  { label: t('common.active'), value: true },
+  { label: t('common.inactive'), value: false },
+])
 
 function roleSeverity(role: string): string {
   switch (role) {
@@ -100,7 +113,7 @@ async function fetchUsers() {
   try {
     users.value = await getUsers()
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load users', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadUsers'), life: 3000 })
   } finally {
     loadingUsers.value = false
   }
@@ -113,23 +126,23 @@ function openCreateDialog() {
 
 async function handleCreateUser() {
   if (!newUser.value.username || !newUser.value.password) {
-    toast.add({ severity: 'warn', summary: 'Validation', detail: 'Username and password are required', life: 3000 })
+    toast.add({ severity: 'warn', summary: t('common.validation'), detail: t('settings.usernamePasswordRequired'), life: 3000 })
     return
   }
   if (newUser.value.password.length < 8) {
-    toast.add({ severity: 'warn', summary: 'Validation', detail: 'Password must be at least 8 characters', life: 3000 })
+    toast.add({ severity: 'warn', summary: t('common.validation'), detail: t('settings.passwordMinChars'), life: 3000 })
     return
   }
 
   creatingUser.value = true
   try {
     await createUser(newUser.value)
-    toast.add({ severity: 'success', summary: 'Created', detail: 'User created successfully', life: 3000 })
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.userCreated'), life: 3000 })
     showCreateDialog.value = false
     await fetchUsers()
   } catch (err: any) {
-    const detail = err.response?.data?.message || 'Failed to create user'
-    toast.add({ severity: 'error', summary: 'Error', detail, life: 3000 })
+    const detail = err.response?.data?.message || t('settings.failedToCreateUser')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
   } finally {
     creatingUser.value = false
   }
@@ -154,12 +167,12 @@ async function handleUpdateUser() {
       role: editForm.value.role,
       isActive: editForm.value.isActive,
     })
-    toast.add({ severity: 'success', summary: 'Updated', detail: 'User updated successfully', life: 3000 })
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.userUpdated'), life: 3000 })
     showEditDialog.value = false
     await fetchUsers()
   } catch (err: any) {
-    const detail = err.response?.data?.message || 'Failed to update user'
-    toast.add({ severity: 'error', summary: 'Error', detail, life: 3000 })
+    const detail = err.response?.data?.message || t('settings.failedToUpdateUser')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
   } finally {
     savingUser.value = false
   }
@@ -174,18 +187,18 @@ function openResetDialog(user: UserResponse) {
 async function handleResetPassword() {
   if (!resetTarget.value) return
   if (!resetNewPassword.value || resetNewPassword.value.length < 8) {
-    toast.add({ severity: 'warn', summary: 'Validation', detail: 'Password must be at least 8 characters', life: 3000 })
+    toast.add({ severity: 'warn', summary: t('common.validation'), detail: t('settings.passwordMinChars'), life: 3000 })
     return
   }
 
   resettingPassword.value = true
   try {
     await resetUserPassword(resetTarget.value.id, resetNewPassword.value)
-    toast.add({ severity: 'success', summary: 'Reset', detail: `Password reset for ${resetTarget.value.username}`, life: 3000 })
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.passwordReset', { username: resetTarget.value.username }), life: 3000 })
     showResetDialog.value = false
   } catch (err: any) {
-    const detail = err.response?.data?.message || 'Failed to reset password'
-    toast.add({ severity: 'error', summary: 'Error', detail, life: 3000 })
+    const detail = err.response?.data?.message || t('settings.failedToResetPassword')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
   } finally {
     resettingPassword.value = false
   }
@@ -193,18 +206,18 @@ async function handleResetPassword() {
 
 function confirmDeactivate(user: UserResponse) {
   confirmDialog.require({
-    message: `Deactivate ${user.username}? They will no longer be able to log in.`,
-    header: 'Confirm Deactivation',
+    message: t('settings.deactivateMessage', { username: user.username }),
+    header: t('settings.confirmDeactivation'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
         await deleteUser(user.id)
-        toast.add({ severity: 'success', summary: 'Deactivated', detail: `${user.username} has been deactivated`, life: 3000 })
+        toast.add({ severity: 'success', summary: t('settings.deactivated'), detail: t('settings.deactivatedDetail', { username: user.username }), life: 3000 })
         await fetchUsers()
       } catch (err: any) {
-        const detail = err.response?.data?.message || 'Failed to deactivate user'
-        toast.add({ severity: 'error', summary: 'Error', detail, life: 3000 })
+        const detail = err.response?.data?.message || t('settings.failedToDeactivate')
+        toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
       }
     },
   })
@@ -222,6 +235,7 @@ const chatCmdSettings = ref<ChatCommandSettings>({
   teleportCooldownSeconds: 30,
   pointsEnabled: true,
   storeEnabled: true,
+  vipEnabled: true,
 })
 const loadingChatCmd = ref(false)
 const savingChatCmd = ref(false)
@@ -231,7 +245,7 @@ async function fetchChatCommandSettings() {
   try {
     chatCmdSettings.value = await getChatCommandSettings()
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load chat command settings', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadChatSettings'), life: 3000 })
   } finally {
     loadingChatCmd.value = false
   }
@@ -241,12 +255,161 @@ async function handleSaveChatCommands() {
   savingChatCmd.value = true
   try {
     await updateChatCommandSettings(chatCmdSettings.value)
-    toast.add({ severity: 'success', summary: 'Saved', detail: 'Chat command settings updated', life: 3000 })
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.chatCommandsUpdated'), life: 3000 })
   } catch (err: any) {
-    const detail = err.response?.data?.message || 'Failed to save settings'
-    toast.add({ severity: 'error', summary: 'Error', detail, life: 3000 })
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
   } finally {
     savingChatCmd.value = false
+  }
+}
+
+// ---- Points Economy Tab (admin only) ----
+const pointsSettings = ref<PointsSettings>({
+  zombieKillPoints: 5,
+  playerKillPoints: 10,
+  signInBonus: 100,
+  playtimePointsPerHour: 20,
+  playtimeIntervalMinutes: 10,
+})
+const loadingPoints = ref(false)
+const savingPoints = ref(false)
+
+async function fetchPointsSettings() {
+  loadingPoints.value = true
+  try {
+    pointsSettings.value = await getPointsSettings()
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadPointsSettings'), life: 3000 })
+  } finally {
+    loadingPoints.value = false
+  }
+}
+
+async function handleSavePoints() {
+  savingPoints.value = true
+  try {
+    await updatePointsSettings(pointsSettings.value)
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.pointsSettingsUpdated'), life: 3000 })
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
+  } finally {
+    savingPoints.value = false
+  }
+}
+
+// ---- Teleport Settings Tab (admin only) ----
+const teleportSettings = ref<TeleportSettings>({
+  teleportDelaySeconds: 5,
+  defaultPointsCost: 0,
+  allowTeleportDuringBloodMoon: true,
+})
+const loadingTeleport = ref(false)
+const savingTeleport = ref(false)
+
+async function fetchTeleportSettings() {
+  loadingTeleport.value = true
+  try {
+    teleportSettings.value = await getTeleportSettings()
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadTeleportSettings'), life: 3000 })
+  } finally {
+    loadingTeleport.value = false
+  }
+}
+
+async function handleSaveTeleport() {
+  savingTeleport.value = true
+  try {
+    await updateTeleportSettings(teleportSettings.value)
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.teleportSettingsUpdated'), life: 3000 })
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
+  } finally {
+    savingTeleport.value = false
+  }
+}
+
+// ---- Store Settings Tab (admin only) ----
+const storeSettings = ref<StoreSettings>({
+  purchaseCooldownSeconds: 0,
+  maxDailyPurchases: 0,
+  priceMultiplier: 1.0,
+})
+const loadingStore = ref(false)
+const savingStore = ref(false)
+
+async function fetchStoreSettings() {
+  loadingStore.value = true
+  try {
+    storeSettings.value = await getStoreSettings()
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadStoreSettings'), life: 3000 })
+  } finally {
+    loadingStore.value = false
+  }
+}
+
+async function handleSaveStore() {
+  savingStore.value = true
+  try {
+    await updateStoreSettings(storeSettings.value)
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.storeSettingsUpdated'), life: 3000 })
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
+  } finally {
+    savingStore.value = false
+  }
+}
+
+// ---- Blood Moon Vote Tab (admin only) ----
+const bmVoteSettings = ref<BloodMoonVoteSettings>({
+  enabled: true,
+  thresholdType: 'percentage',
+  thresholdValue: 60,
+  cooldownMinutes: 0,
+  allowVoteHoursBefore: 2,
+  allowVoteDuringBloodMoon: true,
+  commandName: 'skipbm',
+  voteRegisteredMessage: 'Vote registered to skip blood moon! ({current}/{required})',
+  alreadyVotedMessage: 'You have already voted to skip this blood moon.',
+  voteNotActiveMessage: 'No blood moon vote is active right now.',
+  voteSuccessMessage: 'Vote passed! Skipping the blood moon...',
+  featureDisabledMessage: 'Blood moon skip voting is disabled.',
+  onCooldownMessage: 'Blood moon skip is on cooldown.',
+})
+const loadingBmVote = ref(false)
+const savingBmVote = ref(false)
+
+const thresholdTypeOptions = computed(() => [
+  { label: t('settings.thresholdTypePercentage'), value: 'percentage' },
+  { label: t('settings.thresholdTypeCount'), value: 'count' },
+])
+
+async function fetchBmVoteSettings() {
+  loadingBmVote.value = true
+  try {
+    bmVoteSettings.value = await getVoteSettings()
+  } catch {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('settings.failedToLoadBmVoteSettings'), life: 3000 })
+  } finally {
+    loadingBmVote.value = false
+  }
+}
+
+async function handleSaveBmVote() {
+  savingBmVote.value = true
+  try {
+    await updateVoteSettings(bmVoteSettings.value)
+    toast.add({ severity: 'success', summary: t('common.success'), detail: t('settings.bloodMoonVoteUpdated'), life: 3000 })
+  } catch (err: any) {
+    const detail = err.response?.data?.message || t('settings.failedToSaveSettings')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
+  } finally {
+    savingBmVote.value = false
   }
 }
 
@@ -254,40 +417,48 @@ onMounted(() => {
   if (isAdmin.value) {
     fetchUsers()
     fetchChatCommandSettings()
+    fetchPointsSettings()
+    fetchTeleportSettings()
+    fetchStoreSettings()
+    fetchBmVoteSettings()
   }
 })
 </script>
 
 <template>
   <div class="settings-view">
-    <h1 class="page-title">Settings</h1>
+    <h1 class="page-title">{{ t('settings.title') }}</h1>
 
     <Tabs value="0">
       <TabList>
-        <Tab value="0">Account</Tab>
-        <Tab v-if="isAdmin" value="1">Users</Tab>
-        <Tab v-if="isAdmin" value="2">Chat Commands</Tab>
+        <Tab value="0">{{ t('settings.account') }}</Tab>
+        <Tab v-if="isAdmin" value="1">{{ t('settings.users') }}</Tab>
+        <Tab v-if="isAdmin" value="2">{{ t('settings.chatCommands') }}</Tab>
+        <Tab v-if="isAdmin" value="3">{{ t('settings.pointsEconomy') }}</Tab>
+        <Tab v-if="isAdmin" value="4">{{ t('settings.teleport') }}</Tab>
+        <Tab v-if="isAdmin" value="5">{{ t('settings.store') }}</Tab>
+        <Tab v-if="isAdmin" value="6">{{ t('settings.bloodMoonVote') }}</Tab>
       </TabList>
       <TabPanels>
         <!-- Account Tab -->
         <TabPanel value="0">
           <Card class="settings-card">
-            <template #title>Change Password</template>
+            <template #title>{{ t('settings.changePassword') }}</template>
             <template #content>
               <div class="form-group">
-                <label class="form-label">Current Password</label>
+                <label class="form-label">{{ t('settings.currentPassword') }}</label>
                 <InputText v-model="currentPassword" type="password" class="form-input" />
               </div>
               <div class="form-group">
-                <label class="form-label">New Password</label>
-                <InputText v-model="newPassword" type="password" class="form-input" placeholder="Minimum 8 characters" />
+                <label class="form-label">{{ t('settings.newPassword') }}</label>
+                <InputText v-model="newPassword" type="password" class="form-input" :placeholder="t('settings.newPasswordPlaceholder')" />
               </div>
               <div class="form-group">
-                <label class="form-label">Confirm New Password</label>
+                <label class="form-label">{{ t('settings.confirmPassword') }}</label>
                 <InputText v-model="confirmNewPassword" type="password" class="form-input" @keydown.enter="handleChangePassword" />
               </div>
               <Button
-                label="Change Password"
+                :label="t('settings.changePasswordButton')"
                 icon="pi pi-lock"
                 @click="handleChangePassword"
                 :loading="changingPassword"
@@ -301,33 +472,33 @@ onMounted(() => {
         <!-- Users Tab (admin only) -->
         <TabPanel v-if="isAdmin" value="1">
           <div class="users-toolbar">
-            <Button label="Create User" icon="pi pi-plus" severity="info" @click="openCreateDialog" />
+            <Button :label="t('settings.createUser')" icon="pi pi-plus" severity="info" @click="openCreateDialog" />
             <Button icon="pi pi-refresh" text severity="secondary" @click="fetchUsers" :loading="loadingUsers" />
           </div>
 
           <DataTable :value="users" :loading="loadingUsers" stripedRows class="users-table">
-            <Column field="username" header="Username" sortable />
-            <Column field="displayName" header="Display Name" sortable />
-            <Column field="role" header="Role" sortable style="width: 120px">
+            <Column field="username" :header="t('settings.usernameCol')" sortable />
+            <Column field="displayName" :header="t('settings.displayNameCol')" sortable />
+            <Column field="role" :header="t('settings.roleCol')" sortable style="width: 120px">
               <template #body="{ data }">
                 <Tag :value="data.role" :severity="roleSeverity(data.role) as any" />
               </template>
             </Column>
-            <Column header="Status" style="width: 100px">
+            <Column :header="t('settings.statusCol')" style="width: 100px">
               <template #body="{ data }">
-                <Tag :value="data.isActive ? 'Active' : 'Inactive'" :severity="data.isActive ? 'success' : 'secondary'" />
+                <Tag :value="data.isActive ? t('common.active') : t('common.inactive')" :severity="data.isActive ? 'success' : 'secondary'" />
               </template>
             </Column>
-            <Column field="lastLoginAt" header="Last Login" style="width: 160px">
+            <Column field="lastLoginAt" :header="t('settings.lastLoginCol')" style="width: 160px">
               <template #body="{ data }">
-                <span class="text-secondary">{{ data.lastLoginAt || 'Never' }}</span>
+                <span class="text-secondary">{{ data.lastLoginAt || t('common.never') }}</span>
               </template>
             </Column>
-            <Column header="Actions" style="width: 180px">
+            <Column :header="t('settings.actionsCol')" style="width: 180px">
               <template #body="{ data }">
                 <div class="action-buttons">
-                  <Button icon="pi pi-pencil" text severity="info" size="small" @click="openEditDialog(data)" title="Edit" />
-                  <Button icon="pi pi-key" text severity="warn" size="small" @click="openResetDialog(data)" title="Reset Password" />
+                  <Button icon="pi pi-pencil" text severity="info" size="small" @click="openEditDialog(data)" :title="t('common.edit')" />
+                  <Button icon="pi pi-key" text severity="warn" size="small" @click="openResetDialog(data)" :title="t('settings.resetPassword')" />
                   <Button
                     v-if="data.isActive"
                     icon="pi pi-ban"
@@ -335,14 +506,14 @@ onMounted(() => {
                     severity="danger"
                     size="small"
                     @click="confirmDeactivate(data)"
-                    title="Deactivate"
+                    :title="t('settings.deactivated')"
                   />
                 </div>
               </template>
             </Column>
             <template #empty>
               <div class="empty-state">
-                <p>No users found</p>
+                <p>{{ t('settings.noUsersFound') }}</p>
               </div>
             </template>
           </DataTable>
@@ -350,22 +521,22 @@ onMounted(() => {
 
         <!-- Chat Commands Tab (admin only) -->
         <TabPanel v-if="isAdmin" value="2">
-          <div v-if="loadingChatCmd" class="loading-state">Loading settings...</div>
+          <div v-if="loadingChatCmd" class="loading-state">{{ t('settings.loadingSettings') }}</div>
           <div v-else class="chat-cmd-settings">
             <!-- Master Toggle -->
             <Card class="settings-card">
-              <template #title>General</template>
+              <template #title>{{ t('settings.general') }}</template>
               <template #content>
                 <div class="toggle-row">
-                  <label>Enable Chat Commands</label>
+                  <label>{{ t('settings.enableChatCommands') }}</label>
                   <ToggleSwitch v-model="chatCmdSettings.enabled" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Command Prefix</label>
+                  <label class="form-label">{{ t('settings.commandPrefix') }}</label>
                   <InputText v-model="chatCmdSettings.prefix" class="form-input prefix-input" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Default Cooldown (seconds)</label>
+                  <label class="form-label">{{ t('settings.defaultCooldown') }}</label>
                   <InputNumber v-model="chatCmdSettings.defaultCooldownSeconds" :min="0" :max="3600" class="form-input" />
                 </div>
               </template>
@@ -373,20 +544,20 @@ onMounted(() => {
 
             <!-- Home Commands -->
             <Card class="settings-card">
-              <template #title>Home Commands</template>
-              <template #subtitle>/home, /sethome, /delhome, /homes</template>
+              <template #title>{{ t('settings.homeCommands') }}</template>
+              <template #subtitle>{{ t('settings.homeCommandsSubtitle') }}</template>
               <template #content>
                 <div class="toggle-row">
-                  <label>Enabled</label>
+                  <label>{{ t('common.enabled') }}</label>
                   <ToggleSwitch v-model="chatCmdSettings.homeEnabled" />
                 </div>
                 <div class="form-row">
                   <div class="form-group">
-                    <label class="form-label">Max Homes Per Player</label>
+                    <label class="form-label">{{ t('settings.maxHomesPerPlayer') }}</label>
                     <InputNumber v-model="chatCmdSettings.maxHomesPerPlayer" :min="1" :max="50" class="form-input" />
                   </div>
                   <div class="form-group">
-                    <label class="form-label">Cooldown (seconds)</label>
+                    <label class="form-label">{{ t('settings.cooldownSeconds') }}</label>
                     <InputNumber v-model="chatCmdSettings.homeCooldownSeconds" :min="0" :max="3600" class="form-input" />
                   </div>
                 </div>
@@ -395,15 +566,15 @@ onMounted(() => {
 
             <!-- Teleport Commands -->
             <Card class="settings-card">
-              <template #title>Teleport Commands</template>
-              <template #subtitle>/tp, /cities</template>
+              <template #title>{{ t('settings.teleportCommands') }}</template>
+              <template #subtitle>{{ t('settings.teleportCommandsSubtitle') }}</template>
               <template #content>
                 <div class="toggle-row">
-                  <label>Enabled</label>
+                  <label>{{ t('common.enabled') }}</label>
                   <ToggleSwitch v-model="chatCmdSettings.teleportEnabled" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Cooldown (seconds)</label>
+                  <label class="form-label">{{ t('settings.cooldownSeconds') }}</label>
                   <InputNumber v-model="chatCmdSettings.teleportCooldownSeconds" :min="0" :max="3600" class="form-input" />
                 </div>
               </template>
@@ -411,11 +582,11 @@ onMounted(() => {
 
             <!-- Points Commands -->
             <Card class="settings-card">
-              <template #title>Points Commands</template>
-              <template #subtitle>/points, /signin</template>
+              <template #title>{{ t('settings.pointsCommands') }}</template>
+              <template #subtitle>{{ t('settings.pointsCommandsSubtitle') }}</template>
               <template #content>
                 <div class="toggle-row">
-                  <label>Enabled</label>
+                  <label>{{ t('common.enabled') }}</label>
                   <ToggleSwitch v-model="chatCmdSettings.pointsEnabled" />
                 </div>
               </template>
@@ -423,21 +594,301 @@ onMounted(() => {
 
             <!-- Store Commands -->
             <Card class="settings-card">
-              <template #title>Store Commands</template>
-              <template #subtitle>/shop, /buy</template>
+              <template #title>{{ t('settings.storeCommands') }}</template>
+              <template #subtitle>{{ t('settings.storeCommandsSubtitle') }}</template>
               <template #content>
                 <div class="toggle-row">
-                  <label>Enabled</label>
+                  <label>{{ t('common.enabled') }}</label>
                   <ToggleSwitch v-model="chatCmdSettings.storeEnabled" />
                 </div>
               </template>
             </Card>
 
+            <!-- VIP Commands -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.vipCommands') }}</template>
+              <template #subtitle>{{ t('settings.vipCommandsSubtitle') }}</template>
+              <template #content>
+                <div class="toggle-row">
+                  <label>{{ t('common.enabled') }}</label>
+                  <ToggleSwitch v-model="chatCmdSettings.vipEnabled" />
+                </div>
+              </template>
+            </Card>
+
             <Button
-              label="Save Settings"
+              :label="t('settings.saveSettings')"
               icon="pi pi-save"
               @click="handleSaveChatCommands"
               :loading="savingChatCmd"
+              severity="info"
+              class="save-btn"
+            />
+          </div>
+        </TabPanel>
+
+        <!-- Points Economy Tab (admin only) -->
+        <TabPanel v-if="isAdmin" value="3">
+          <div v-if="loadingPoints" class="loading-state">{{ t('settings.loadingSettings') }}</div>
+          <div v-else class="chat-cmd-settings">
+            <!-- Kill Points -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.killRewards') }}</template>
+              <template #subtitle>{{ t('settings.killRewardsSubtitle') }}</template>
+              <template #content>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.zombieKillPoints') }}</label>
+                    <InputNumber v-model="pointsSettings.zombieKillPoints" :min="0" :max="10000" class="form-input" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.playerKillPointsPvP') }}</label>
+                    <InputNumber v-model="pointsSettings.playerKillPoints" :min="0" :max="10000" class="form-input" />
+                  </div>
+                </div>
+              </template>
+            </Card>
+
+            <!-- Sign-In Bonus -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.dailySignInBonus') }}</template>
+              <template #subtitle>{{ t('settings.signInBonusSubtitle') }}</template>
+              <template #content>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.signInBonusPoints') }}</label>
+                  <InputNumber v-model="pointsSettings.signInBonus" :min="0" :max="100000" class="form-input" />
+                </div>
+                <small class="settings-hint">{{ t('settings.signInBonusHint') }}</small>
+              </template>
+            </Card>
+
+            <!-- Playtime Rewards -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.playtimeRewards') }}</template>
+              <template #subtitle>{{ t('settings.playtimeRewardsSubtitle') }}</template>
+              <template #content>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.pointsPerHour') }}</label>
+                    <InputNumber v-model="pointsSettings.playtimePointsPerHour" :min="0" :max="10000" class="form-input" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.checkInterval') }}</label>
+                    <InputNumber v-model="pointsSettings.playtimeIntervalMinutes" :min="1" :max="1440" class="form-input" />
+                  </div>
+                </div>
+                <small class="settings-hint">{{ t('settings.playtimeHint') }}</small>
+              </template>
+            </Card>
+
+            <Button
+              :label="t('settings.saveSettings')"
+              icon="pi pi-save"
+              @click="handleSavePoints"
+              :loading="savingPoints"
+              severity="info"
+              class="save-btn"
+            />
+          </div>
+        </TabPanel>
+
+        <!-- Teleport Settings Tab (admin only) -->
+        <TabPanel v-if="isAdmin" value="4">
+          <div v-if="loadingTeleport" class="loading-state">{{ t('settings.loadingSettings') }}</div>
+          <div v-else class="chat-cmd-settings">
+            <!-- Teleport Behavior -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.teleportBehavior') }}</template>
+              <template #subtitle>{{ t('settings.teleportBehaviorSubtitle') }}</template>
+              <template #content>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.teleportDelayLabel') }}</label>
+                  <InputNumber v-model="teleportSettings.teleportDelaySeconds" :min="0" :max="60" class="form-input" />
+                </div>
+                <small class="settings-hint">{{ t('settings.teleportDelayHint') }}</small>
+              </template>
+            </Card>
+
+            <!-- City Waypoints -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.cityWaypoints') }}</template>
+              <template #subtitle>{{ t('settings.cityWaypointsSubtitle') }}</template>
+              <template #content>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.defaultPointsCost') }}</label>
+                  <InputNumber v-model="teleportSettings.defaultPointsCost" :min="0" :max="100000" class="form-input" />
+                </div>
+                <small class="settings-hint">{{ t('settings.defaultPointsCostHint') }}</small>
+              </template>
+            </Card>
+
+            <!-- Blood Moon -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.bloodMoonRestrictions') }}</template>
+              <template #subtitle>{{ t('settings.bloodMoonRestrictionsSubtitle') }}</template>
+              <template #content>
+                <div class="toggle-row">
+                  <label>{{ t('settings.allowTeleportDuringBloodMoon') }}</label>
+                  <ToggleSwitch v-model="teleportSettings.allowTeleportDuringBloodMoon" />
+                </div>
+                <small class="settings-hint">{{ t('settings.bloodMoonHint') }}</small>
+              </template>
+            </Card>
+
+            <Button
+              :label="t('settings.saveSettings')"
+              icon="pi pi-save"
+              @click="handleSaveTeleport"
+              :loading="savingTeleport"
+              severity="info"
+              class="save-btn"
+            />
+          </div>
+        </TabPanel>
+
+        <!-- Store Settings Tab (admin only) -->
+        <TabPanel v-if="isAdmin" value="5">
+          <div v-if="loadingStore" class="loading-state">{{ t('settings.loadingSettings') }}</div>
+          <div v-else class="chat-cmd-settings">
+            <!-- Purchase Limits -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.purchaseLimits') }}</template>
+              <template #subtitle>{{ t('settings.purchaseLimitsSubtitle') }}</template>
+              <template #content>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.purchaseCooldown') }}</label>
+                    <InputNumber v-model="storeSettings.purchaseCooldownSeconds" :min="0" :max="86400" class="form-input" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">{{ t('settings.maxDailyPurchases') }}</label>
+                    <InputNumber v-model="storeSettings.maxDailyPurchases" :min="0" :max="1000" class="form-input" />
+                  </div>
+                </div>
+                <small class="settings-hint">{{ t('settings.purchaseLimitsHint') }}</small>
+              </template>
+            </Card>
+
+            <!-- Pricing -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.pricing') }}</template>
+              <template #subtitle>{{ t('settings.pricingSubtitle') }}</template>
+              <template #content>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.priceMultiplier') }}</label>
+                  <InputNumber v-model="storeSettings.priceMultiplier" :min="0.1" :max="10" :minFractionDigits="1" :maxFractionDigits="2" :step="0.1" class="form-input" />
+                </div>
+                <small class="settings-hint">{{ t('settings.priceMultiplierHint') }}</small>
+              </template>
+            </Card>
+
+            <Button
+              :label="t('settings.saveSettings')"
+              icon="pi pi-save"
+              @click="handleSaveStore"
+              :loading="savingStore"
+              severity="info"
+              class="save-btn"
+            />
+          </div>
+        </TabPanel>
+
+        <!-- Blood Moon Vote Tab (admin only) -->
+        <TabPanel v-if="isAdmin" value="6">
+          <div v-if="loadingBmVote" class="loading-state">{{ t('settings.loadingSettings') }}</div>
+          <div v-else class="chat-cmd-settings">
+            <!-- General -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.general') }}</template>
+              <template #subtitle>{{ t('settings.bloodMoonVoteSubtitle') }}</template>
+              <template #content>
+                <div class="toggle-row">
+                  <label>{{ t('settings.enableBloodMoonVote') }}</label>
+                  <ToggleSwitch v-model="bmVoteSettings.enabled" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.commandNameLabel') }}</label>
+                  <InputText v-model="bmVoteSettings.commandName" class="form-input prefix-input" />
+                </div>
+              </template>
+            </Card>
+
+            <!-- Threshold -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.thresholdType') }}</template>
+              <template #content>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.thresholdType') }}</label>
+                  <Select v-model="bmVoteSettings.thresholdType" :options="thresholdTypeOptions" optionLabel="label" optionValue="value" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.thresholdValue') }}</label>
+                  <InputNumber v-model="bmVoteSettings.thresholdValue" :min="1" :max="bmVoteSettings.thresholdType === 'percentage' ? 100 : 999" class="form-input" />
+                </div>
+                <small class="settings-hint">{{ t('settings.thresholdValueHint') }}</small>
+              </template>
+            </Card>
+
+            <!-- Timing -->
+            <Card class="settings-card">
+              <template #title>{{ t('settings.voteTimingTitle') }}</template>
+              <template #subtitle>{{ t('settings.voteTimingSubtitle') }}</template>
+              <template #content>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.allowVoteHoursBefore') }}</label>
+                  <InputNumber v-model="bmVoteSettings.allowVoteHoursBefore" :min="0" :max="22" class="form-input" />
+                </div>
+                <small class="settings-hint">{{ t('settings.allowVoteHoursBeforeHint') }}</small>
+                <div class="toggle-row" style="margin-top: 1rem">
+                  <label>{{ t('settings.allowVoteDuringBloodMoon') }}</label>
+                  <ToggleSwitch v-model="bmVoteSettings.allowVoteDuringBloodMoon" />
+                </div>
+                <small class="settings-hint">{{ t('settings.allowVoteDuringBloodMoonHint') }}</small>
+                <div class="form-group" style="margin-top: 1rem">
+                  <label class="form-label">{{ t('settings.voteCooldownMinutes') }}</label>
+                  <InputNumber v-model="bmVoteSettings.cooldownMinutes" :min="0" :max="1440" class="form-input" />
+                </div>
+                <small class="settings-hint">{{ t('settings.voteCooldownHint') }}</small>
+              </template>
+            </Card>
+
+            <!-- Chat Messages -->
+            <Card class="settings-card" style="max-width: 600px">
+              <template #title>{{ t('settings.chatMessagesTitle') }}</template>
+              <template #subtitle>{{ t('settings.chatMessagesSubtitle') }}</template>
+              <template #content>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.voteRegisteredMsg') }}</label>
+                  <InputText v-model="bmVoteSettings.voteRegisteredMessage" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.alreadyVotedMsg') }}</label>
+                  <InputText v-model="bmVoteSettings.alreadyVotedMessage" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.voteNotActiveMsg') }}</label>
+                  <InputText v-model="bmVoteSettings.voteNotActiveMessage" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.voteSuccessMsg') }}</label>
+                  <InputText v-model="bmVoteSettings.voteSuccessMessage" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.featureDisabledMsg') }}</label>
+                  <InputText v-model="bmVoteSettings.featureDisabledMessage" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('settings.onCooldownMsg') }}</label>
+                  <InputText v-model="bmVoteSettings.onCooldownMessage" class="form-input" />
+                </div>
+              </template>
+            </Card>
+
+            <Button
+              :label="t('settings.saveSettings')"
+              icon="pi pi-save"
+              @click="handleSaveBmVote"
+              :loading="savingBmVote"
               severity="info"
               class="save-btn"
             />
@@ -447,51 +898,51 @@ onMounted(() => {
     </Tabs>
 
     <!-- Create User Dialog -->
-    <Dialog v-model:visible="showCreateDialog" header="Create User" :modal="true" :style="{ width: '400px' }">
+    <Dialog v-model:visible="showCreateDialog" :header="t('settings.createUser')" :modal="true" :style="{ width: '400px' }">
       <div class="dialog-form">
         <div class="form-group">
-          <label class="form-label">Username</label>
-          <InputText v-model="newUser.username" class="form-input" placeholder="lowercase, no spaces" />
+          <label class="form-label">{{ t('settings.username') }}</label>
+          <InputText v-model="newUser.username" class="form-input" :placeholder="t('settings.lowercaseNoSpaces')" />
         </div>
         <div class="form-group">
-          <label class="form-label">Password</label>
-          <InputText v-model="newUser.password" type="password" class="form-input" placeholder="Minimum 8 characters" />
+          <label class="form-label">{{ t('settings.password') }}</label>
+          <InputText v-model="newUser.password" type="password" class="form-input" :placeholder="t('settings.newPasswordPlaceholder')" />
         </div>
         <div class="form-group">
-          <label class="form-label">Display Name</label>
-          <InputText v-model="newUser.displayName" class="form-input" placeholder="Optional" />
+          <label class="form-label">{{ t('settings.displayName') }}</label>
+          <InputText v-model="newUser.displayName" class="form-input" :placeholder="t('settings.optional')" />
         </div>
         <div class="form-group">
-          <label class="form-label">Role</label>
+          <label class="form-label">{{ t('settings.role') }}</label>
           <Select v-model="newUser.role" :options="roleOptions" optionLabel="label" optionValue="value" class="form-input" />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="showCreateDialog = false" />
-        <Button label="Create" icon="pi pi-check" @click="handleCreateUser" :loading="creatingUser" severity="info" />
+        <Button :label="t('common.cancel')" text severity="secondary" @click="showCreateDialog = false" />
+        <Button :label="t('common.create')" icon="pi pi-check" @click="handleCreateUser" :loading="creatingUser" severity="info" />
       </template>
     </Dialog>
 
     <!-- Edit User Dialog -->
-    <Dialog v-model:visible="showEditDialog" header="Edit User" :modal="true" :style="{ width: '400px' }">
+    <Dialog v-model:visible="showEditDialog" :header="t('settings.editUser')" :modal="true" :style="{ width: '400px' }">
       <div class="dialog-form" v-if="editingUser">
         <div class="form-group">
-          <label class="form-label">Username</label>
+          <label class="form-label">{{ t('settings.username') }}</label>
           <InputText :modelValue="editingUser.username" disabled class="form-input" />
         </div>
         <div class="form-group">
-          <label class="form-label">Display Name</label>
+          <label class="form-label">{{ t('settings.displayName') }}</label>
           <InputText v-model="editForm.displayName" class="form-input" />
         </div>
         <div class="form-group">
-          <label class="form-label">Role</label>
+          <label class="form-label">{{ t('settings.role') }}</label>
           <Select v-model="editForm.role" :options="roleOptions" optionLabel="label" optionValue="value" class="form-input" />
         </div>
         <div class="form-group">
-          <label class="form-label">Active</label>
+          <label class="form-label">{{ t('common.status') }}</label>
           <Select
             v-model="editForm.isActive"
-            :options="[{ label: 'Active', value: true }, { label: 'Inactive', value: false }]"
+            :options="activeStatusOptions"
             optionLabel="label"
             optionValue="value"
             class="form-input"
@@ -499,23 +950,23 @@ onMounted(() => {
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="showEditDialog = false" />
-        <Button label="Save" icon="pi pi-check" @click="handleUpdateUser" :loading="savingUser" severity="info" />
+        <Button :label="t('common.cancel')" text severity="secondary" @click="showEditDialog = false" />
+        <Button :label="t('common.save')" icon="pi pi-check" @click="handleUpdateUser" :loading="savingUser" severity="info" />
       </template>
     </Dialog>
 
     <!-- Reset Password Dialog -->
-    <Dialog v-model:visible="showResetDialog" header="Reset Password" :modal="true" :style="{ width: '400px' }">
+    <Dialog v-model:visible="showResetDialog" :header="t('settings.resetPassword')" :modal="true" :style="{ width: '400px' }">
       <div class="dialog-form" v-if="resetTarget">
-        <p class="reset-info">Resetting password for <strong>{{ resetTarget.username }}</strong></p>
+        <p class="reset-info">{{ t('settings.resettingPasswordFor') }} <strong>{{ resetTarget.username }}</strong></p>
         <div class="form-group">
-          <label class="form-label">New Password</label>
-          <InputText v-model="resetNewPassword" type="password" class="form-input" placeholder="Minimum 8 characters" @keydown.enter="handleResetPassword" />
+          <label class="form-label">{{ t('settings.newPassword') }}</label>
+          <InputText v-model="resetNewPassword" type="password" class="form-input" :placeholder="t('settings.newPasswordPlaceholder')" @keydown.enter="handleResetPassword" />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="showResetDialog = false" />
-        <Button label="Reset Password" icon="pi pi-key" @click="handleResetPassword" :loading="resettingPassword" severity="warn" />
+        <Button :label="t('common.cancel')" text severity="secondary" @click="showResetDialog = false" />
+        <Button :label="t('settings.resetPasswordButton')" icon="pi pi-key" @click="handleResetPassword" :loading="resettingPassword" severity="warn" />
       </template>
     </Dialog>
   </div>
@@ -627,6 +1078,13 @@ onMounted(() => {
 
 .save-btn {
   align-self: flex-start;
+}
+
+.settings-hint {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--kc-text-secondary);
+  margin-top: 0.25rem;
 }
 
 .loading-state {

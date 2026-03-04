@@ -128,6 +128,18 @@ namespace KitsuneCommand.Core
             var featureManager = _container.Resolve<FeatureManager>();
             featureManager.InitializeAll();
 
+            // Initialize game item catalog (reads all ItemClass entries)
+            var itemCatalog = _container.Resolve<GameItemCatalog>();
+            itemCatalog.Initialize();
+
+            // Initialize item icon service (serves icon PNGs from Data/ItemIcons)
+            var iconService = _container.Resolve<ItemIconService>();
+            iconService.Initialize();
+
+            // Initialize backup service (loads settings and starts scheduler if enabled)
+            var backupService = _container.Resolve<BackupService>();
+            backupService.Initialize();
+
             // Resolve chat command feature for direct command dispatch
             _chatCommandFeature = _container.Resolve<ChatCommandFeature>();
 
@@ -140,8 +152,9 @@ namespace KitsuneCommand.Core
 
             _eventBus.Publish(new GameShutdownEvent());
 
-            // Shutdown player tracking
+            // Shutdown services
             try { _container?.Resolve<LivePlayerManager>()?.Shutdown(); } catch { }
+            try { _container?.Resolve<BackupService>()?.Shutdown(); } catch { }
 
             _wsServer?.Stop();
             _webServer?.Stop();

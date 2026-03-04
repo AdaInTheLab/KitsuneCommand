@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { usePermissions } from '@/composables/usePermissions'
 import { usePlayersStore } from '@/stores/players'
 import { useToast } from 'primevue/usetoast'
@@ -22,6 +23,7 @@ import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const confirmService = useConfirm()
@@ -55,7 +57,7 @@ async function fetchCities() {
     cities.value = result.items
     totalCities.value = result.total
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load cities', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('teleportCities.failedToLoad'), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -90,7 +92,7 @@ function openEditDialog(city: CityLocation) {
 
 async function saveCity() {
   if (!cityForm.value.cityName.trim() || !cityForm.value.position.trim()) {
-    toast.add({ severity: 'warn', summary: 'Validation', detail: 'Name and position are required', life: 3000 })
+    toast.add({ severity: 'warn', summary: t('common.validation'), detail: t('teleportCities.nameAndPositionRequired'), life: 3000 })
     return
   }
 
@@ -105,16 +107,16 @@ async function saveCity() {
 
     if (cityDialogMode.value === 'create') {
       await createCity(data)
-      toast.add({ severity: 'success', summary: 'Created', detail: `City "${data.cityName}" created`, life: 3000 })
+      toast.add({ severity: 'success', summary: t('common.success'), detail: t('teleportCities.cityCreated', { name: data.cityName }), life: 3000 })
     } else {
       await updateCity(editingCityId.value!, data)
-      toast.add({ severity: 'success', summary: 'Updated', detail: `City "${data.cityName}" updated`, life: 3000 })
+      toast.add({ severity: 'success', summary: t('common.success'), detail: t('teleportCities.cityUpdated', { name: data.cityName }), life: 3000 })
     }
 
     showCityDialog.value = false
     fetchCities()
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save city', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('teleportCities.failedToSave'), life: 3000 })
   } finally {
     cityDialogLoading.value = false
   }
@@ -122,17 +124,17 @@ async function saveCity() {
 
 function confirmDeleteCity(city: CityLocation) {
   confirmService.require({
-    message: `Delete city "${city.cityName}"?`,
-    header: 'Confirm Delete',
+    message: t('teleportCities.confirmDeleteMessage', { name: city.cityName }),
+    header: t('common.confirmDelete'),
     icon: 'pi pi-trash',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
         await deleteCity(city.id)
-        toast.add({ severity: 'success', summary: 'Deleted', detail: `City "${city.cityName}" deleted`, life: 3000 })
+        toast.add({ severity: 'success', summary: t('common.success'), detail: t('teleportCities.cityDeleted', { name: city.cityName }), life: 3000 })
         fetchCities()
       } catch {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete city', life: 3000 })
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('teleportCities.failedToDelete'), life: 3000 })
       }
     },
   })
@@ -153,11 +155,11 @@ async function executeTeleport() {
   try {
     const player = playersStore.playerList.find((p) => p.playerId === teleportPlayerId.value)
     const result = await teleportToCity(teleportCity.value.id, teleportPlayerId.value, player?.playerName)
-    toast.add({ severity: 'success', summary: 'Teleported', detail: result.message, life: 4000 })
+    toast.add({ severity: 'success', summary: t('teleportCities.teleported'), detail: result.message, life: 4000 })
     showTeleportDialog.value = false
   } catch (err: any) {
-    const msg = err?.response?.data?.message || 'Failed to teleport player'
-    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 4000 })
+    const msg = err?.response?.data?.message || t('teleportCities.failedToTeleport')
+    toast.add({ severity: 'error', summary: t('common.error'), detail: msg, life: 4000 })
   } finally {
     teleportLoading.value = false
   }
@@ -176,14 +178,14 @@ onMounted(fetchCities)
 <template>
   <div class="teleport-view">
     <div class="page-header">
-      <h1 class="page-title">Teleport</h1>
+      <h1 class="page-title">{{ t('teleport.title') }}</h1>
     </div>
 
     <!-- Sub-tab navigation -->
     <div class="sub-tabs">
-      <button class="sub-tab sub-tab--active">Cities</button>
-      <button class="sub-tab" @click="navigateTo('homes')">Homes</button>
-      <button class="sub-tab" @click="navigateTo('history')">History</button>
+      <button class="sub-tab sub-tab--active">{{ t('teleport.cities') }}</button>
+      <button class="sub-tab" @click="navigateTo('homes')">{{ t('teleport.homes') }}</button>
+      <button class="sub-tab" @click="navigateTo('history')">{{ t('teleport.history') }}</button>
     </div>
 
     <div class="toolbar">
@@ -191,7 +193,7 @@ onMounted(fetchCities)
       <div class="toolbar-spacer" />
       <Button
         v-if="canManageTeleport"
-        label="Add City"
+        :label="t('teleportCities.addCity')"
         icon="pi pi-plus"
         severity="info"
         size="small"
@@ -210,29 +212,29 @@ onMounted(fetchCities)
       :rowsPerPageOptions="[25, 50, 100]"
       @page="onPage"
     >
-      <Column field="cityName" header="City Name" />
+      <Column field="cityName" :header="t('teleportCities.cityName')" />
 
-      <Column field="pointsRequired" header="Cost" style="width: 120px">
+      <Column field="pointsRequired" :header="t('teleportCities.cost')" style="width: 120px">
         <template #body="{ data }">
           <Tag v-if="data.pointsRequired > 0" :value="`${data.pointsRequired} pts`" severity="warn" />
-          <span v-else class="free-text">Free</span>
+          <span v-else class="free-text">{{ t('common.free') }}</span>
         </template>
       </Column>
 
-      <Column field="position" header="Position" style="width: 220px">
+      <Column field="position" :header="t('teleportCities.position')" style="width: 220px">
         <template #body="{ data }">
           <code class="position-text">{{ data.position }}</code>
         </template>
       </Column>
 
-      <Column field="viewDirection" header="Direction" style="width: 180px">
+      <Column field="viewDirection" :header="t('teleportCities.direction')" style="width: 180px">
         <template #body="{ data }">
           <code v-if="data.viewDirection" class="position-text">{{ data.viewDirection }}</code>
           <span v-else class="empty-text">—</span>
         </template>
       </Column>
 
-      <Column header="Actions" style="width: 160px">
+      <Column :header="t('teleportCities.actions')" style="width: 160px">
         <template #body="{ data }">
           <div class="action-buttons">
             <Button
@@ -242,7 +244,7 @@ onMounted(fetchCities)
               severity="info"
               size="small"
               @click="openTeleportDialog(data)"
-              title="Teleport Player"
+              :title="t('teleportCities.teleportPlayer')"
             />
             <Button
               v-if="canManageTeleport"
@@ -251,7 +253,7 @@ onMounted(fetchCities)
               severity="secondary"
               size="small"
               @click="openEditDialog(data)"
-              title="Edit"
+              :title="t('common.edit')"
             />
             <Button
               v-if="canManageTeleport"
@@ -260,7 +262,7 @@ onMounted(fetchCities)
               severity="danger"
               size="small"
               @click="confirmDeleteCity(data)"
-              title="Delete"
+              :title="t('common.delete')"
             />
           </div>
         </template>
@@ -269,8 +271,8 @@ onMounted(fetchCities)
       <template #empty>
         <div class="empty-state">
           <i class="pi pi-compass" style="font-size: 2rem; color: var(--kc-text-secondary)" />
-          <p>No city locations yet</p>
-          <span class="empty-hint">Create city waypoints for quick player teleportation.</span>
+          <p>{{ t('teleportCities.noCitiesYet') }}</p>
+          <span class="empty-hint">{{ t('teleportCities.createWaypointsHint') }}</span>
         </div>
       </template>
     </DataTable>
@@ -278,33 +280,33 @@ onMounted(fetchCities)
     <!-- City CRUD Dialog -->
     <Dialog
       v-model:visible="showCityDialog"
-      :header="cityDialogMode === 'create' ? 'Add City Location' : 'Edit City Location'"
+      :header="cityDialogMode === 'create' ? t('teleportCities.addCityLocation') : t('teleportCities.editCityLocation')"
       :modal="true"
       :style="{ width: '450px' }"
     >
       <div class="form-grid">
         <div class="form-field">
-          <label>City Name *</label>
-          <InputText v-model="cityForm.cityName" placeholder="e.g., Trader Joel" class="w-full" />
+          <label>{{ t('teleportCities.cityNameLabel') }}</label>
+          <InputText v-model="cityForm.cityName" :placeholder="t('teleportCities.cityNamePlaceholder')" class="w-full" />
         </div>
         <div class="form-field">
-          <label>Points Cost</label>
+          <label>{{ t('teleportCities.pointsCost') }}</label>
           <InputNumber v-model="cityForm.pointsRequired" :min="0" :max="999999" showButtons class="w-full" />
         </div>
         <div class="form-field">
-          <label>Position * <small>(x y z)</small></label>
-          <InputText v-model="cityForm.position" placeholder="e.g., 100 65 -200" class="w-full" />
+          <label>{{ t('teleportCities.positionLabel') }}</label>
+          <InputText v-model="cityForm.position" :placeholder="t('teleportCities.positionPlaceholder')" class="w-full" />
         </div>
         <div class="form-field">
-          <label>View Direction <small>(optional, x y z)</small></label>
-          <InputText v-model="cityForm.viewDirection" placeholder="e.g., 0 90 0" class="w-full" />
+          <label>{{ t('teleportCities.viewDirection') }}</label>
+          <InputText v-model="cityForm.viewDirection" :placeholder="t('teleportCities.viewDirectionPlaceholder')" class="w-full" />
         </div>
       </div>
 
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="showCityDialog = false" />
+        <Button :label="t('common.cancel')" text severity="secondary" @click="showCityDialog = false" />
         <Button
-          :label="cityDialogMode === 'create' ? 'Create' : 'Save'"
+          :label="cityDialogMode === 'create' ? t('common.create') : t('common.save')"
           severity="info"
           @click="saveCity"
           :loading="cityDialogLoading"
@@ -315,30 +317,30 @@ onMounted(fetchCities)
     <!-- Teleport Player Dialog -->
     <Dialog
       v-model:visible="showTeleportDialog"
-      header="Teleport Player to City"
+      :header="t('teleportCities.teleportPlayerToCity')"
       :modal="true"
       :style="{ width: '400px' }"
     >
       <div class="teleport-form" v-if="teleportCity">
         <p class="teleport-info">
-          Destination: <strong>{{ teleportCity.cityName }}</strong>
+          {{ t('teleportCities.destination') }}: <strong>{{ teleportCity.cityName }}</strong>
           <br />
-          Position: <code>{{ teleportCity.position }}</code>
+          {{ t('teleportCities.position') }}: <code>{{ teleportCity.position }}</code>
           <br />
           <span v-if="teleportCity.pointsRequired > 0">
-            Cost: <Tag :value="`${teleportCity.pointsRequired} pts`" severity="warn" />
+            {{ t('teleportCities.cost') }}: <Tag :value="`${teleportCity.pointsRequired} pts`" severity="warn" />
           </span>
-          <span v-else>Cost: <span class="free-text">Free</span></span>
+          <span v-else>{{ t('teleportCities.cost') }}: <span class="free-text">{{ t('common.free') }}</span></span>
         </p>
 
         <div class="form-field">
-          <label>Select Player (online)</label>
+          <label>{{ t('teleportCities.selectPlayerOnline') }}</label>
           <Select
             v-model="teleportPlayerId"
             :options="onlinePlayers()"
             optionLabel="playerName"
             optionValue="playerId"
-            placeholder="Choose a player..."
+            :placeholder="t('teleportCities.choosePlayer')"
             class="w-full"
             filter
           />
@@ -346,9 +348,9 @@ onMounted(fetchCities)
       </div>
 
       <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="showTeleportDialog = false" />
+        <Button :label="t('common.cancel')" text severity="secondary" @click="showTeleportDialog = false" />
         <Button
-          label="Teleport"
+          :label="t('teleport.title')"
           icon="pi pi-send"
           severity="info"
           @click="executeTeleport"

@@ -37,6 +37,26 @@ const router = createRouter({
           component: () => import('@/views/ConsoleView.vue'),
         },
         {
+          path: 'server',
+          name: 'ServerControl',
+          component: () => import('@/views/ServerControlView.vue'),
+        },
+        {
+          path: 'config',
+          name: 'ConfigEditor',
+          component: () => import('@/views/ConfigEditorView.vue'),
+        },
+        {
+          path: 'mods',
+          name: 'Mods',
+          component: () => import('@/views/ModsView.vue'),
+        },
+        {
+          path: 'backups',
+          name: 'Backups',
+          component: () => import('@/views/BackupsView.vue'),
+        },
+        {
           path: 'map',
           name: 'Map',
           component: () => import('@/views/MapView.vue'),
@@ -62,6 +82,16 @@ const router = createRouter({
           component: () => import('@/views/TeleportHistoryView.vue'),
         },
         {
+          path: 'vipgifts',
+          name: 'VipGifts',
+          component: () => import('@/views/VipGiftsView.vue'),
+        },
+        {
+          path: 'schedules',
+          name: 'Schedules',
+          component: () => import('@/views/SchedulesView.vue'),
+        },
+        {
           path: 'cdkeys',
           name: 'CdKeys',
           component: () => import('@/views/CdKeysView.vue'),
@@ -85,6 +115,11 @@ const router = createRouter({
           path: 'economy/history',
           name: 'PurchaseHistory',
           component: () => import('@/views/PurchaseHistoryView.vue'),
+        },
+        {
+          path: 'items',
+          name: 'ItemDatabase',
+          component: () => import('@/views/ItemDatabaseView.vue'),
         },
         {
           path: 'settings',

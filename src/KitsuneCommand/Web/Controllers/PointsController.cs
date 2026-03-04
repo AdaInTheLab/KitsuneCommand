@@ -2,8 +2,10 @@ using System.Web.Http;
 using KitsuneCommand.Core;
 using KitsuneCommand.Data.Entities;
 using KitsuneCommand.Data.Repositories;
+using KitsuneCommand.Features;
 using KitsuneCommand.Web.Auth;
 using KitsuneCommand.Web.Models;
+using Newtonsoft.Json;
 
 namespace KitsuneCommand.Web.Controllers
 {
@@ -15,11 +17,16 @@ namespace KitsuneCommand.Web.Controllers
     public class PointsController : ApiController
     {
         private readonly IPointsRepository _pointsRepo;
+        private readonly ISettingsRepository _settingsRepo;
         private readonly ModEventBus _eventBus;
 
-        public PointsController(IPointsRepository pointsRepo, ModEventBus eventBus)
+        public PointsController(
+            IPointsRepository pointsRepo,
+            ISettingsRepository settingsRepo,
+            ModEventBus eventBus)
         {
             _pointsRepo = pointsRepo;
+            _settingsRepo = settingsRepo;
             _eventBus = eventBus;
         }
 
@@ -111,7 +118,7 @@ namespace KitsuneCommand.Web.Controllers
             if (existing == null)
                 return NotFound();
 
-            const int signInBonus = 100;
+            var signInBonus = GetPointsSettings().SignInBonus;
             var awarded = _pointsRepo.TrySignIn(playerId, signInBonus);
 
             if (!awarded)
@@ -142,6 +149,28 @@ namespace KitsuneCommand.Web.Controllers
                 points = updated.Points,
                 change = signInBonus
             }));
+        }
+
+        // ─── Helpers ────────────────────────────────────────────
+
+        /// <summary>
+        /// Reads the persisted PointsSettings from the database.
+        /// Falls back to defaults if not found or on error.
+        /// </summary>
+        private PointsSettings GetPointsSettings()
+        {
+            try
+            {
+                var json = _settingsRepo.Get("Points");
+                if (!string.IsNullOrEmpty(json))
+                {
+                    var loaded = JsonConvert.DeserializeObject<PointsSettings>(json);
+                    if (loaded != null) return loaded;
+                }
+            }
+            catch { /* fall through to defaults */ }
+
+            return new PointsSettings();
         }
     }
 }

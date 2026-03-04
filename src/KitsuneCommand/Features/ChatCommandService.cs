@@ -4,6 +4,7 @@ using KitsuneCommand.Abstractions.Models;
 using KitsuneCommand.Core;
 using KitsuneCommand.Data.Entities;
 using KitsuneCommand.Data.Repositories;
+using Newtonsoft.Json;
 
 namespace KitsuneCommand.Features
 {
@@ -19,8 +20,11 @@ namespace KitsuneCommand.Features
         private readonly IGoodsRepository _goodsRepo;
         private readonly IPurchaseHistoryRepository _purchaseRepo;
         private readonly ITeleRecordRepository _teleRecordRepo;
+        private readonly IVipGiftRepository _vipGiftRepo;
+        private readonly ISettingsRepository _settingsRepo;
         private readonly LivePlayerManager _playerManager;
         private readonly ModEventBus _eventBus;
+        private readonly BloodMoonVoteFeature _bloodMoonVoteFeature;
 
         // Cooldown tracking: playerId -> { commandGroup -> lastUsedUtc }
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, DateTime>> _cooldowns
@@ -33,8 +37,11 @@ namespace KitsuneCommand.Features
             IGoodsRepository goodsRepo,
             IPurchaseHistoryRepository purchaseRepo,
             ITeleRecordRepository teleRecordRepo,
+            IVipGiftRepository vipGiftRepo,
+            ISettingsRepository settingsRepo,
             LivePlayerManager playerManager,
-            ModEventBus eventBus)
+            ModEventBus eventBus,
+            BloodMoonVoteFeature bloodMoonVoteFeature)
         {
             _homeRepo = homeRepo;
             _cityRepo = cityRepo;
@@ -42,8 +49,11 @@ namespace KitsuneCommand.Features
             _goodsRepo = goodsRepo;
             _purchaseRepo = purchaseRepo;
             _teleRecordRepo = teleRecordRepo;
+            _vipGiftRepo = vipGiftRepo;
+            _settingsRepo = settingsRepo;
             _playerManager = playerManager;
             _eventBus = eventBus;
+            _bloodMoonVoteFeature = bloodMoonVoteFeature;
         }
 
         /// <summary>
@@ -120,6 +130,18 @@ namespace KitsuneCommand.Features
                     case "buy":
                         if (!settings.StoreEnabled) { Reply(entityId, "Store commands are disabled."); return true; }
                         HandleBuy(playerId, entityId, playerName, args, settings);
+                        return true;
+
+                    // ── VIP Commands ─────────────────────────────────────
+                    case "vip":
+                        if (!settings.VipEnabled) { Reply(entityId, "VIP commands are disabled."); return true; }
+                        HandleVipClaim(playerId, entityId, playerName);
+                        return true;
+
+                    // ── Blood Moon Vote Commands ─────────────────────────
+                    case "skipbm":
+                    case "voteskip":
+                        HandleBloodMoonVote(playerId, entityId, playerName);
                         return true;
 
                     default:
@@ -363,14 +385,9 @@ namespace KitsuneCommand.Features
 
         private void HandleSignIn(string playerId, int entityId, string playerName)
         {
-            // Use the PointsFeature's sign-in bonus value (default 100)
-            // We read from the points feature settings indirectly via the repository
             _pointsRepo.UpsertPlayer(playerId, playerName);
 
-            // Attempt sign-in with the default bonus (100 pts)
-            // The PointsFeature's Settings.SignInBonus controls the actual value,
-            // but from here we use a reasonable default since we can't easily access PointsFeature
-            const int signInBonus = 100;
+            var signInBonus = GetPointsSettings().SignInBonus;
             if (_pointsRepo.TrySignIn(playerId, signInBonus))
             {
                 var info = _pointsRepo.GetByPlayerId(playerId);
@@ -474,6 +491,82 @@ namespace KitsuneCommand.Features
             Reply(entityId, $"Purchased '{goods.Name}' for {goods.Price} pts. Balance: {newBalance}");
         }
 
+        // ─── VIP Commands ───────────────────────────────────────────────
+
+        private void HandleVipClaim(string playerId, int entityId, string playerName)
+        {
+            var gifts = _vipGiftRepo.GetPendingForPlayer(playerId).ToList();
+            if (gifts.Count == 0)
+            {
+                Reply(entityId, "You have no pending VIP gifts.");
+                return;
+            }
+
+            var claimed = 0;
+            foreach (var gift in gifts)
+            {
+                // Give items
+                var items = _vipGiftRepo.GetItemsForGift(gift.Id).ToList();
+                foreach (var item in items)
+                {
+                    var cmd = $"give {entityId} {item.ItemName} {item.Count} {item.Quality}";
+                    SdtdConsole.Instance.ExecuteSync(cmd, null);
+                }
+
+                // Execute commands
+                var commands = _vipGiftRepo.GetCommandsForGift(gift.Id).ToList();
+                foreach (var cmdDef in commands)
+                {
+                    var cmd = cmdDef.Command
+                        .Replace("{entityId}", entityId.ToString())
+                        .Replace("{playerId}", playerId)
+                        .Replace("{playerName}", playerName);
+                    SdtdConsole.Instance.ExecuteSync(cmd, null);
+                }
+
+                // Mark as claimed
+                _vipGiftRepo.MarkAsClaimed(gift.Id);
+                claimed++;
+                Reply(entityId, $"Claimed VIP gift: {gift.Name}");
+            }
+
+            if (claimed > 1)
+                Reply(entityId, $"All {claimed} VIP gifts claimed!");
+        }
+
+        // ─── Blood Moon Vote Commands ─────────────────────────────────
+
+        private void HandleBloodMoonVote(string playerId, int entityId, string playerName)
+        {
+            var result = _bloodMoonVoteFeature.CastVote(playerId, playerName, entityId);
+            var bmSettings = _bloodMoonVoteFeature.Settings;
+            var status = _bloodMoonVoteFeature.GetVoteStatus();
+
+            switch (result)
+            {
+                case VoteResult.Registered:
+                    Reply(entityId, bmSettings.VoteRegisteredMessage
+                        .Replace("{current}", status.CurrentVotes.ToString())
+                        .Replace("{required}", status.RequiredVotes.ToString()));
+                    break;
+                case VoteResult.AlreadyVoted:
+                    Reply(entityId, bmSettings.AlreadyVotedMessage);
+                    break;
+                case VoteResult.NotActive:
+                    Reply(entityId, bmSettings.VoteNotActiveMessage);
+                    break;
+                case VoteResult.Passed:
+                    Reply(entityId, bmSettings.VoteSuccessMessage);
+                    break;
+                case VoteResult.Disabled:
+                    Reply(entityId, bmSettings.FeatureDisabledMessage);
+                    break;
+                case VoteResult.OnCooldown:
+                    Reply(entityId, bmSettings.OnCooldownMessage);
+                    break;
+            }
+        }
+
         // ─── Helpers ───────────────────────────────────────────────────
 
         /// <summary>
@@ -517,6 +610,26 @@ namespace KitsuneCommand.Features
 
             playerCooldowns[group] = DateTime.UtcNow;
             return true;
+        }
+
+        /// <summary>
+        /// Reads the persisted PointsSettings from the database.
+        /// Falls back to defaults if not found or on error.
+        /// </summary>
+        private PointsSettings GetPointsSettings()
+        {
+            try
+            {
+                var json = _settingsRepo.Get("Points");
+                if (!string.IsNullOrEmpty(json))
+                {
+                    var loaded = JsonConvert.DeserializeObject<PointsSettings>(json);
+                    if (loaded != null) return loaded;
+                }
+            }
+            catch { /* fall through to defaults */ }
+
+            return new PointsSettings();
         }
 
         /// <summary>

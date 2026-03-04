@@ -27,6 +27,13 @@ namespace KitsuneCommand.Core
             builder.RegisterType<LivePlayerManager>().AsSelf().SingleInstance();
             builder.RegisterType<MapTileRenderer>().AsSelf().SingleInstance();
             builder.RegisterType<ChatPersistenceService>().AsSelf().SingleInstance();
+            builder.RegisterType<GameItemCatalog>().AsSelf().SingleInstance();
+            builder.RegisterType<ItemIconService>().AsSelf().SingleInstance();
+
+            // Server management services
+            builder.RegisterType<ServerConfigService>().AsSelf().SingleInstance();
+            builder.RegisterType<ModManagerService>().AsSelf().SingleInstance();
+            builder.RegisterType<BackupService>().AsSelf().SingleInstance();
 
             // Database connection factory
             builder.Register(c => new DbConnectionFactory(settings.DatabasePath))

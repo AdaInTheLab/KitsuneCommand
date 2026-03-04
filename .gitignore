@@ -51,5 +51,8 @@ src/KitsuneCommand/7dtd-binaries/
 .env.local
 .env.*.local
 
+# Decompiled reference files
+localization_decompiled.cs
+
 # Claude
 .claude/

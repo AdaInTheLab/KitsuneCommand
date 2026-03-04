@@ -11,37 +11,57 @@ KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that pr
 
 ## Features
 
+### Dashboard & Monitoring
 - **Web Dashboard** — Real-time server stats, player count, FPS, memory, game day/time
+- **GPS Map** — Live Leaflet map with player markers, region tracking, and tile rendering via SkiaSharp
+- **Web Console** — Execute server commands from your browser with real-time log streaming and command history
+
+### Player & Chat
 - **Player Management** — View online/offline players, inventories, skills, kick/ban
-- **GPS Map** — Live map with player markers and region tracking
-- **Web Console** — Execute server commands from your browser with real-time log streaming
 - **Chat System** — View and search chat history, send messages
+- **Colored Chat** — Custom name colors and chat formatting per player
+
+### Economy & Rewards
 - **Points & Store** — In-game economy with sign-in rewards and a configurable shop
+- **CD Keys** — Promo code system with items, commands, expiry, and redemption limits
+- **VIP Gifts** — One-time or repeating (daily/weekly/monthly) reward packages per player
+- **Purchase History** — Full audit trail of store transactions
+
+### Game Systems
 - **Teleportation** — Home, city, and friend teleport systems with point costs
-- **Auto Backup** — Scheduled server backups with archive management
-- **Task Scheduler** — Cron-based automated command execution
-- **CD Keys & VIP Gifts** — Promo code and VIP reward systems
-- **Colored Chat** — Custom name colors and chat formatting
+- **Blood Moon Vote** — Players vote on blood moon difficulty before horde night
+- **Task Scheduler** — Interval-based automated command execution
+- **Game Item Database** — Browse all game items with localized names and icons
+
+### Server Management (Self-Hoster Tools)
+- **Server Control** — Save world, shutdown server, live resource monitoring
+- **Config Editor** — Edit `serverconfig.xml` with a rich form UI (10 grouped categories) or raw XML
+- **Mods Manager** — Browse, upload (ZIP), delete, and enable/disable server mods
+- **Auto Backup** — Create, restore, delete, and schedule world save backups
 - **Plugin System** — Extend functionality with custom plugin DLLs
-- **13 Languages** — English, German, Spanish, French, Italian, Japanese, Korean, Polish, Portuguese, Russian, Turkish, Chinese (Simplified & Traditional)
+
+### Localization
+- **5 Languages** — English, Japanese, Korean, Chinese Simplified, Chinese Traditional
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | C# / .NET Framework 4.8 / OWIN / ASP.NET Web API 2 |
-| Frontend | Vue 3 / TypeScript / Vite / PrimeVue 4 |
+| Backend | C# 11 / .NET Framework 4.8 / OWIN / ASP.NET Web API 2 |
+| Frontend | Vue 3 / TypeScript 5 / Vite 6 / PrimeVue 4 |
 | Database | SQLite / Dapper |
 | Real-time | WebSocketSharp |
 | Auth | OAuth2 with BCrypt password hashing |
+| Map | SkiaSharp tile rendering + Leaflet |
 | Game Integration | Harmony runtime patching |
 | DI | Autofac |
+| Testing | NUnit 4 + Moq (backend) / Vitest (frontend) |
 
 ## Requirements
 
 - 7 Days to Die Dedicated Server (V2.5+)
 - .NET Framework 4.8 runtime (included with Windows)
-- For building from source: .NET SDK or Visual Studio/Rider
+- For building from source: .NET SDK 8.0+ and Node.js 18+
 
 ## Installation
 
@@ -54,36 +74,75 @@ KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that pr
          ModInfo.xml
          KitsuneCommand.dll
          Config/
+           Migrations/
+           appsettings.json
          wwwroot/
          Plugins/
+         x64/
+           SQLite.Interop.dll
+           libSkiaSharp.dll
    ```
 3. Start your dedicated server
 4. Open `http://your-server-ip:8888` in a browser
 5. On first run, check the server console for your auto-generated admin credentials
 
+## Project Structure
+
+```
+KitsuneCommand/
+├── src/
+│   ├── KitsuneCommand/               # Main mod (C# DLL)
+│   │   ├── Core/                     # Lifecycle, DI, event bus
+│   │   ├── Data/                     # SQLite repos, entities, migrations
+│   │   ├── Features/                 # Game features (points, teleport, etc.)
+│   │   ├── Services/                 # Backup, config, map, mods, items
+│   │   ├── Web/                      # Controllers, auth, models
+│   │   ├── WebSocket/                # Real-time event broadcasting
+│   │   ├── Config/Migrations/        # SQL migration files (001-006)
+│   │   └── 7dtd-binaries/            # Game DLLs (gitignored, see below)
+│   ├── KitsuneCommand.Abstractions/  # Plugin API interfaces
+│   ├── KitsuneCommand.Tests/         # NUnit test project
+│   └── RuntimeInfoShim/              # .NET compatibility shim
+├── frontend/                         # Vue 3 web panel
+│   ├── src/
+│   │   ├── api/                      # Axios API clients
+│   │   ├── components/               # Shared Vue components
+│   │   ├── composables/              # WebSocket, permissions
+│   │   ├── i18n/locales/             # en, ja, ko, zh-CN, zh-TW
+│   │   ├── stores/                   # Pinia state management
+│   │   ├── views/                    # Page components
+│   │   └── __tests__/                # Vitest test files
+│   └── vitest.config.ts
+├── tools/
+│   └── build.ps1                     # Full build + package script
+├── KitsuneCommand.sln
+└── README.md
+```
+
 ## Building from Source
+
+### Prerequisites
+
+1. [.NET SDK 8.0+](https://dotnet.microsoft.com/download)
+2. [Node.js 18+](https://nodejs.org/)
+3. Game binary references — copy these from your 7D2D install's `7DaysToDie_Data/Managed/` folder into `src/KitsuneCommand/7dtd-binaries/`:
+   - `Assembly-CSharp.dll`
+   - `Assembly-CSharp-firstpass.dll`
+   - `LogLibrary.dll`
+   - `UnityEngine.dll`
+   - `UnityEngine.CoreModule.dll`
+   - `0Harmony.dll`
 
 ### Frontend
 
 ```bash
 cd frontend
 npm install
-npm run dev      # Development with hot reload (proxies API to :8888)
-npm run build    # Production build (outputs to src/KitsuneCommand/wwwroot/)
+npm run dev      # Development server with hot reload (proxies API to :8888)
+npm run build    # Production build → src/KitsuneCommand/wwwroot/
 ```
 
 ### Backend
-
-Requires game binary references in `src/KitsuneCommand/7dtd-binaries/`. Copy these from your 7D2D install's `7DaysToDie_Data/Managed/` folder:
-
-- `Assembly-CSharp.dll`
-- `Assembly-CSharp-firstpass.dll`
-- `LogLibrary.dll`
-- `UnityEngine.dll`
-- `UnityEngine.CoreModule.dll`
-- `0Harmony.dll`
-
-Then build with Visual Studio, Rider, or the .NET CLI:
 
 ```bash
 dotnet build src/KitsuneCommand/KitsuneCommand.csproj -c Release
@@ -95,6 +154,44 @@ dotnet build src/KitsuneCommand/KitsuneCommand.csproj -c Release
 .\tools\build.ps1
 # Output: dist/KitsuneCommand/ (ready to copy to Mods/)
 ```
+
+This builds both frontend and backend, then packages everything into a deployable mod folder.
+
+### Deploy to Server
+
+Copy the `dist/KitsuneCommand/` folder (or individual files) to your server:
+
+```
+YourServer/Mods/KitsuneCommand/
+```
+
+> **Note:** Backend changes (DLL) require a server restart. Frontend changes (wwwroot/) are served from disk and take effect immediately.
+
+## Testing
+
+### Backend (NUnit)
+
+```bash
+cd src/KitsuneCommand.Tests
+dotnet test
+```
+
+62 tests covering:
+- **Repository integration tests** — PointsRepository, UserAccountRepository, SettingsRepository (real SQLite)
+- **Service unit tests** — AuthService, ServerConfigService, PasswordHasher (with Moq)
+- **Core tests** — ModEventBus pub/sub, thread safety
+
+### Frontend (Vitest)
+
+```bash
+cd frontend
+npm run test:run    # Single run
+npm run test        # Watch mode
+```
+
+21 tests covering:
+- **Pinia store tests** — Auth (login/logout/localStorage), Economy (points updates)
+- **API client tests** — Backups API response unwrapping and error handling
 
 ## Configuration
 
@@ -146,17 +243,6 @@ public class MyPlugin : IPlugin
 
 Place the compiled DLL in the `Plugins/` directory.
 
-## Development Status
-
-- [x] **Phase 1** — Foundation (project structure, auth, database, web server, Vue frontend)
-- [ ] **Phase 2** — Core game integration (players, map, console)
-- [ ] **Phase 3** — Chat & access control
-- [ ] **Phase 4** — Points & game store
-- [ ] **Phase 5** — Teleportation system
-- [ ] **Phase 6** — Rewards & scheduling
-- [ ] **Phase 7** — Customization & utilities
-- [ ] **Phase 8** — Plugin system & hardening
-
 ## License
 
 [MIT](LICENSE)
@@ -164,4 +250,3 @@ Place the compiled DLL in the `Plugins/` directory.
 ## Credits
 
 - Original concept: [ServerKit](https://github.com/IceCoffee1024/7DaysToDie-ServerKit) by IceCoffee1024
-- Logo: Created with Coda/Gemini

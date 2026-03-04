@@ -22,6 +22,8 @@ export function usePermissions() {
   const canExecuteTeleport = computed(() => isAdmin.value || isModerator.value)
   const canManageCdKeys = computed(() => isAdmin.value)
   const canRedeemCdKeys = computed(() => isAdmin.value || isModerator.value)
+  const canManageVipGifts = computed(() => isAdmin.value)
+  const canManageSchedules = computed(() => isAdmin.value)
 
   return {
     isAdmin,
@@ -41,5 +43,7 @@ export function usePermissions() {
     canExecuteTeleport,
     canManageCdKeys,
     canRedeemCdKeys,
+    canManageVipGifts,
+    canManageSchedules,
   }
 }

@@ -23,6 +23,7 @@ export interface PlayerInfo {
 export interface InventorySlot {
   slotIndex: number
   itemName: string
+  displayName: string
   count: number
   quality: number
   durability: number
@@ -171,6 +172,78 @@ export interface TeleRecord {
   targetPosition: string | null
 }
 
+// ─── Points Settings ────────────────────────────────
+
+export interface PointsSettings {
+  zombieKillPoints: number
+  playerKillPoints: number
+  signInBonus: number
+  playtimePointsPerHour: number
+  playtimeIntervalMinutes: number
+}
+
+// ─── Teleport Settings ─────────────────────────────
+
+export interface TeleportSettings {
+  teleportDelaySeconds: number
+  defaultPointsCost: number
+  allowTeleportDuringBloodMoon: boolean
+}
+
+// ─── Store Settings ────────────────────────────────
+
+export interface StoreSettings {
+  purchaseCooldownSeconds: number
+  maxDailyPurchases: number
+  priceMultiplier: number
+}
+
+// ─── Dashboard Stats ───────────────────────────────
+
+export interface DashboardStats {
+  totalPlayers: number
+  totalPointsInCirculation: number
+  totalPurchases: number
+  totalPointsSpent: number
+  totalStoreItems: number
+  totalTeleports: number
+  totalCities: number
+  totalCdKeys: number
+  totalRedemptions: number
+  totalVipGifts: number
+  totalSchedules: number
+  activeSchedules: number
+  totalChatMessages: number
+}
+
+// ─── Blood Moon Vote Types ──────────────────────────
+
+export interface BloodMoonVoteStatus {
+  isActive: boolean
+  currentVotes: number
+  requiredVotes: number
+  totalOnline: number
+  voters: string[]
+  bloodMoonDay: number
+  isEnabled: boolean
+}
+
+export interface BloodMoonVoteSettings {
+  enabled: boolean
+  thresholdType: string
+  thresholdValue: number
+  cooldownMinutes: number
+  allowVoteHoursBefore: number
+  allowVoteDuringBloodMoon: boolean
+  commandName: string
+  voteRegisteredMessage: string
+  alreadyVotedMessage: string
+  voteNotActiveMessage: string
+  voteSuccessMessage: string
+  featureDisabledMessage: string
+  onCooldownMessage: string
+}
+
 // ─── Chat Command Settings ──────────────────────────
 
 export interface ChatCommandSettings {
@@ -184,6 +257,7 @@ export interface ChatCommandSettings {
   teleportCooldownSeconds: number
   pointsEnabled: boolean
   storeEnabled: boolean
+  vipEnabled: boolean
 }
 
 // ─── CD Key Types ────────────────────────────────────
@@ -209,4 +283,55 @@ export interface CdKeyRedeemRecord {
   cdKeyId: number
   playerId: string
   playerName: string | null
+}
+
+// ─── VIP Gift Types ─────────────────────────────────
+
+export interface VipGift {
+  id: number
+  createdAt: string
+  playerId: string
+  playerName: string | null
+  name: string
+  claimed: number
+  totalClaimCount: number
+  lastClaimedAt: string | null
+  description: string | null
+  claimPeriod: string | null
+  isClaimable: boolean
+}
+
+export interface VipGiftDetail extends VipGift {
+  items: ItemDefinition[]
+  commands: CommandDefinition[]
+}
+
+// ─── Task Schedule Types ────────────────────────────
+
+export interface TaskSchedule {
+  id: number
+  createdAt: string
+  name: string
+  cronExpression: string
+  isEnabled: number
+  lastRunAt: string | null
+  description: string | null
+  intervalMinutes: number
+}
+
+export interface TaskScheduleDetail extends TaskSchedule {
+  nextRunAt: string | null
+  commands: CommandDefinition[]
+}
+
+// ─── Game Item Catalog ─────────────────────────────
+
+export interface GameItemInfo {
+  id: number
+  itemName: string
+  displayName: string
+  iconName: string
+  hasQuality: boolean
+  maxStack: number
+  groups: string[]
 }

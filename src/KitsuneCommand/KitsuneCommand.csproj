@@ -45,7 +45,7 @@
 
   <!-- Graphics (map tile rendering) -->
   <ItemGroup>
-    <PackageReference Include="SkiaSharp" Version="3.116.1" />
+    <PackageReference Include="SkiaSharp" Version="2.80.4" />
   </ItemGroup>
 
   <!-- WebSocket -->
@@ -91,6 +91,12 @@
       <HintPath>7dtd-binaries\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
+  </ItemGroup>
+
+  <!-- System Compression (for ZIP handling in mods/backups) -->
+  <ItemGroup>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
   </ItemGroup>
 
   <!-- Copy Config and wwwroot to output -->

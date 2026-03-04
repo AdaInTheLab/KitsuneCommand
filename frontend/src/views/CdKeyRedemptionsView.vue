@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { getAllRedemptions } from '@/api/cdkeys'
@@ -9,6 +10,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 
@@ -32,7 +34,7 @@ async function fetchHistory() {
     records.value = result.items
     totalRecords.value = result.total
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load redemption history', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('cdKeyRedemptions.failedToLoad'), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -68,19 +70,19 @@ onMounted(fetchHistory)
 <template>
   <div class="cdkeys-view">
     <div class="page-header">
-      <h1 class="page-title">CD Keys</h1>
+      <h1 class="page-title">{{ t('cdKeys.title') }}</h1>
     </div>
 
     <!-- Sub-tab navigation -->
     <div class="sub-tabs">
-      <button class="sub-tab" @click="navigateTo('keys')">Keys</button>
-      <button class="sub-tab sub-tab--active">Redemptions</button>
+      <button class="sub-tab" @click="navigateTo('keys')">{{ t('cdKeys.keys') }}</button>
+      <button class="sub-tab sub-tab--active">{{ t('cdKeys.redemptions') }}</button>
     </div>
 
     <div class="toolbar">
       <span class="p-input-icon-left search-wrapper">
         <i class="pi pi-search" />
-        <InputText v-model="keyIdFilter" placeholder="Filter by key ID..." class="search-input" />
+        <InputText v-model="keyIdFilter" :placeholder="t('cdKeyRedemptions.filterPlaceholder')" class="search-input" />
       </span>
       <Button icon="pi pi-refresh" text severity="secondary" @click="fetchHistory" :loading="loading" />
     </div>
@@ -96,19 +98,19 @@ onMounted(fetchHistory)
       :rowsPerPageOptions="[25, 50, 100]"
       @page="onPage"
     >
-      <Column field="createdAt" header="Date" style="width: 180px">
+      <Column field="createdAt" :header="t('cdKeyRedemptions.date')" style="width: 180px">
         <template #body="{ data }">
           <span class="date-text">{{ formatDate(data.createdAt) }}</span>
         </template>
       </Column>
 
-      <Column field="cdKeyId" header="Key ID" style="width: 100px">
+      <Column field="cdKeyId" :header="t('cdKeyRedemptions.keyId')" style="width: 100px">
         <template #body="{ data }">
           <code class="key-id">#{{ data.cdKeyId }}</code>
         </template>
       </Column>
 
-      <Column field="playerName" header="Player">
+      <Column field="playerName" :header="t('cdKeyRedemptions.player')">
         <template #body="{ data }">
           <div class="player-name">
             <i class="pi pi-user" />
@@ -117,7 +119,7 @@ onMounted(fetchHistory)
         </template>
       </Column>
 
-      <Column field="playerId" header="Player ID" style="width: 200px">
+      <Column field="playerId" :header="t('cdKeyRedemptions.playerId')" style="width: 200px">
         <template #body="{ data }">
           <span class="player-id-text">{{ data.playerId }}</span>
         </template>
@@ -126,7 +128,7 @@ onMounted(fetchHistory)
       <template #empty>
         <div class="empty-state">
           <i class="pi pi-history" style="font-size: 2rem; color: var(--kc-text-secondary)" />
-          <p>No redemption records yet</p>
+          <p>{{ t('cdKeyRedemptions.noRecordsYet') }}</p>
         </div>
       </template>
     </DataTable>

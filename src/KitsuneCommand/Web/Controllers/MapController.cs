@@ -29,7 +29,7 @@ namespace KitsuneCommand.Web.Controllers
         /// Anonymous access — tile imagery is not sensitive.
         /// </summary>
         [HttpGet]
-        [Route("tile/{z:int}/{x:int}/{y:int}")]
+        [Route("tile/{z}/{x}/{y}")]
         [AllowAnonymous]
         public HttpResponseMessage GetTile(int z, int x, int y)
         {

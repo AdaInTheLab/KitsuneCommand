@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { getPlayer, kickPlayer, banPlayer } from '@/api/players'
+import { getGameItemIconUrl } from '@/api/gameItems'
 import { usePermissions } from '@/composables/usePermissions'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -13,6 +15,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import type { PlayerDetailInfo } from '@/types'
 
+const { t } = useI18n()
 const props = defineProps<{ entityId: string }>()
 const router = useRouter()
 const toast = useToast()
@@ -28,7 +31,7 @@ async function fetchPlayer() {
   try {
     player.value = await getPlayer(entityIdNum.value)
   } catch {
-    error.value = 'Failed to load player data.'
+    error.value = t('playerDetail.failedToLoad')
   } finally {
     loading.value = false
   }
@@ -38,17 +41,17 @@ function confirmKick() {
   if (!player.value) return
   const name = player.value.playerName
   confirm.require({
-    message: `Kick ${name} from the server?`,
-    header: 'Confirm Kick',
+    message: t('players.confirmKickMessage', { name }),
+    header: t('players.confirmKickHeader'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-warning',
     accept: async () => {
       try {
         await kickPlayer(entityIdNum.value)
-        toast.add({ severity: 'success', summary: 'Kicked', detail: `${name} has been kicked`, life: 3000 })
+        toast.add({ severity: 'success', summary: t('players.kicked'), detail: t('players.kickedDetail', { name }), life: 3000 })
         router.push({ name: 'Players' })
       } catch {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to kick player', life: 3000 })
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('players.failedToKick'), life: 3000 })
       }
     },
   })
@@ -58,17 +61,17 @@ function confirmBan() {
   if (!player.value) return
   const name = player.value.playerName
   confirm.require({
-    message: `Ban ${name} from the server?`,
-    header: 'Confirm Ban',
+    message: t('players.confirmBanMessage', { name }),
+    header: t('players.confirmBanHeader'),
     icon: 'pi pi-ban',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
         await banPlayer(entityIdNum.value)
-        toast.add({ severity: 'success', summary: 'Banned', detail: `${name} has been banned`, life: 3000 })
+        toast.add({ severity: 'success', summary: t('players.banned'), detail: t('players.bannedDetail', { name }), life: 3000 })
         router.push({ name: 'Players' })
       } catch {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to ban player', life: 3000 })
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('players.failedToBan'), life: 3000 })
       }
     },
   })
@@ -81,13 +84,13 @@ onMounted(fetchPlayer)
   <div class="player-detail">
     <div class="page-header">
       <Button icon="pi pi-arrow-left" text severity="secondary" @click="router.push({ name: 'Players' })" />
-      <h1 class="page-title">{{ player?.playerName ?? 'Player Details' }}</h1>
-      <Tag v-if="player?.isAdmin" value="Admin" severity="warn" />
+      <h1 class="page-title">{{ player?.playerName ?? t('playerDetail.title') }}</h1>
+      <Tag v-if="player?.isAdmin" :value="t('players.admin')" severity="warn" />
     </div>
 
     <div v-if="loading" class="loading-state">
       <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-      <p>Loading player data...</p>
+      <p>{{ t('playerDetail.loadingPlayerData') }}</p>
     </div>
 
     <div v-else-if="error" class="error-state">
@@ -100,27 +103,27 @@ onMounted(fetchPlayer)
       <div class="stats-grid">
         <Card class="stat-card">
           <template #content>
-            <div class="stat-label">Level</div>
+            <div class="stat-label">{{ t('playerDetail.level') }}</div>
             <div class="stat-value">{{ player.level }}</div>
           </template>
         </Card>
         <Card class="stat-card">
           <template #content>
-            <div class="stat-label">Health</div>
+            <div class="stat-label">{{ t('playerDetail.health') }}</div>
             <ProgressBar :value="player.health" :showValue="false" style="height: 8px; margin: 4px 0" />
             <div class="stat-value">{{ Math.round(player.health) }}</div>
           </template>
         </Card>
         <Card class="stat-card">
           <template #content>
-            <div class="stat-label">Stamina</div>
+            <div class="stat-label">{{ t('playerDetail.stamina') }}</div>
             <ProgressBar :value="player.stamina" :showValue="false" style="height: 8px; margin: 4px 0" />
             <div class="stat-value">{{ Math.round(player.stamina) }}</div>
           </template>
         </Card>
         <Card class="stat-card">
           <template #content>
-            <div class="stat-label">Position</div>
+            <div class="stat-label">{{ t('playerDetail.position') }}</div>
             <div class="stat-value mono">
               {{ Math.round(player.positionX) }}, {{ Math.round(player.positionY) }}, {{ Math.round(player.positionZ) }}
             </div>
@@ -128,25 +131,25 @@ onMounted(fetchPlayer)
         </Card>
         <Card class="stat-card">
           <template #content>
-            <div class="stat-label">Zombie Kills</div>
+            <div class="stat-label">{{ t('playerDetail.zombieKills') }}</div>
             <div class="stat-value">{{ player.zombieKills }}</div>
           </template>
         </Card>
         <Card class="stat-card">
           <template #content>
-            <div class="stat-label">Player Kills</div>
+            <div class="stat-label">{{ t('playerDetail.playerKills') }}</div>
             <div class="stat-value">{{ player.playerKills }}</div>
           </template>
         </Card>
         <Card class="stat-card">
           <template #content>
-            <div class="stat-label">Deaths</div>
+            <div class="stat-label">{{ t('playerDetail.deaths') }}</div>
             <div class="stat-value">{{ player.deaths }}</div>
           </template>
         </Card>
         <Card class="stat-card">
           <template #content>
-            <div class="stat-label">Score</div>
+            <div class="stat-label">{{ t('playerDetail.score') }}</div>
             <div class="stat-value">{{ player.score }}</div>
           </template>
         </Card>
@@ -154,51 +157,83 @@ onMounted(fetchPlayer)
 
       <!-- Actions -->
       <div class="actions-bar" v-if="canKickPlayers || canBanPlayers">
-        <Button v-if="canKickPlayers" label="Kick" icon="pi pi-sign-out" severity="warning" size="small" @click="confirmKick" />
-        <Button v-if="canBanPlayers" label="Ban" icon="pi pi-ban" severity="danger" size="small" @click="confirmBan" />
+        <Button v-if="canKickPlayers" :label="t('playerDetail.kick')" icon="pi pi-sign-out" severity="warning" size="small" @click="confirmKick" />
+        <Button v-if="canBanPlayers" :label="t('playerDetail.ban')" icon="pi pi-ban" severity="danger" size="small" @click="confirmBan" />
       </div>
 
       <!-- Inventory: Belt -->
       <Card class="section-card" v-if="player.beltItems?.length">
-        <template #title>Toolbar (Belt)</template>
+        <template #title>{{ t('playerDetail.toolbarBelt') }}</template>
         <template #content>
           <DataTable :value="player.beltItems" size="small" stripedRows>
-            <Column field="slotIndex" header="Slot" style="width: 60px" />
-            <Column field="itemName" header="Item" />
-            <Column field="count" header="Qty" style="width: 60px" />
-            <Column field="quality" header="Quality" style="width: 80px" />
+            <Column field="slotIndex" :header="t('playerDetail.slot')" style="width: 60px" />
+            <Column :header="''" style="width: 44px">
+              <template #body="{ data }">
+                <img
+                  v-if="data.iconName"
+                  :src="getGameItemIconUrl(data.iconName, 32)"
+                  :alt="data.iconName"
+                  class="inv-icon"
+                  loading="lazy"
+                  @error="($event.target as HTMLImageElement).style.display = 'none'"
+                />
+              </template>
+            </Column>
+            <Column field="displayName" :header="t('playerDetail.item')">
+              <template #body="{ data }">
+                <span>{{ data.displayName || data.itemName }}</span>
+              </template>
+            </Column>
+            <Column field="count" :header="t('playerDetail.qty')" style="width: 60px" />
+            <Column field="quality" :header="t('playerDetail.quality')" style="width: 80px" />
           </DataTable>
         </template>
       </Card>
 
       <!-- Inventory: Bag -->
       <Card class="section-card" v-if="player.bagItems?.length">
-        <template #title>Backpack</template>
+        <template #title>{{ t('playerDetail.backpack') }}</template>
         <template #content>
           <DataTable :value="player.bagItems" size="small" stripedRows>
-            <Column field="slotIndex" header="Slot" style="width: 60px" />
-            <Column field="itemName" header="Item" />
-            <Column field="count" header="Qty" style="width: 60px" />
-            <Column field="quality" header="Quality" style="width: 80px" />
+            <Column field="slotIndex" :header="t('playerDetail.slot')" style="width: 60px" />
+            <Column :header="''" style="width: 44px">
+              <template #body="{ data }">
+                <img
+                  v-if="data.iconName"
+                  :src="getGameItemIconUrl(data.iconName, 32)"
+                  :alt="data.iconName"
+                  class="inv-icon"
+                  loading="lazy"
+                  @error="($event.target as HTMLImageElement).style.display = 'none'"
+                />
+              </template>
+            </Column>
+            <Column field="displayName" :header="t('playerDetail.item')">
+              <template #body="{ data }">
+                <span>{{ data.displayName || data.itemName }}</span>
+              </template>
+            </Column>
+            <Column field="count" :header="t('playerDetail.qty')" style="width: 60px" />
+            <Column field="quality" :header="t('playerDetail.quality')" style="width: 80px" />
           </DataTable>
         </template>
       </Card>
 
       <!-- Skills -->
       <Card class="section-card" v-if="player.skills?.length">
-        <template #title>Skills &amp; Perks</template>
+        <template #title>{{ t('playerDetail.skillsPerks') }}</template>
         <template #content>
           <DataTable :value="player.skills" size="small" stripedRows sortField="name" :sortOrder="1">
-            <Column field="name" header="Skill" sortable />
-            <Column header="Level" sortable sortField="level" style="width: 120px">
+            <Column field="name" :header="t('playerDetail.skill')" sortable />
+            <Column :header="t('playerDetail.skillLevel')" sortable sortField="level" style="width: 120px">
               <template #body="{ data }">
                 {{ data.level }} / {{ data.maxLevel }}
               </template>
             </Column>
-            <Column header="Status" style="width: 100px">
+            <Column :header="t('playerDetail.status')" style="width: 100px">
               <template #body="{ data }">
-                <Tag v-if="data.isLocked" value="Locked" severity="secondary" />
-                <Tag v-else-if="data.level >= data.maxLevel" value="Max" severity="success" />
+                <Tag v-if="data.isLocked" :value="t('playerDetail.locked')" severity="secondary" />
+                <Tag v-else-if="data.level >= data.maxLevel" :value="t('playerDetail.max')" severity="success" />
               </template>
             </Column>
           </DataTable>
@@ -246,6 +281,8 @@ onMounted(fetchPlayer)
   background: var(--kc-bg-card);
   border: 1px solid var(--kc-border);
 }
+
+.inv-icon { width: 32px; height: 32px; object-fit: contain; display: block; }
 
 .loading-state, .error-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;

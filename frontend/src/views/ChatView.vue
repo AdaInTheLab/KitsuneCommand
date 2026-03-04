@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getChatHistory } from '@/api/chat'
 import { sendChatMessage } from '@/api/chat'
 import { useChatStore } from '@/stores/chat'
@@ -10,6 +11,7 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 
+const { t } = useI18n()
 const toast = useToast()
 const chatStore = useChatStore()
 const authStore = useAuthStore()
@@ -26,21 +28,21 @@ const autoScroll = ref(true)
 
 const isViewer = computed(() => authStore.role === 'viewer')
 
-const chatTypeOptions = [
-  { label: 'All Types', value: null },
-  { label: 'Global', value: 0 },
-  { label: 'Friends', value: 1 },
-  { label: 'Party', value: 2 },
-  { label: 'Whisper', value: 3 },
-]
+const chatTypeOptions = computed(() => [
+  { label: t('chat.allTypes'), value: null },
+  { label: t('chat.global'), value: 0 },
+  { label: t('chat.friends'), value: 1 },
+  { label: t('chat.party'), value: 2 },
+  { label: t('chat.whisper'), value: 3 },
+])
 
 function chatTypeName(type: number): string {
   switch (type) {
-    case 0: return 'Global'
-    case 1: return 'Friends'
-    case 2: return 'Party'
-    case 3: return 'Whisper'
-    default: return 'Unknown'
+    case 0: return t('chat.global')
+    case 1: return t('chat.friends')
+    case 2: return t('chat.party')
+    case 3: return t('chat.whisper')
+    default: return t('chat.unknown')
   }
 }
 
@@ -83,7 +85,7 @@ async function loadInitialHistory() {
     chatStore.setMessages(reversed, result.total)
     scrollToBottom()
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load chat history', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('chat.failedToLoad'), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -112,7 +114,7 @@ async function loadOlderMessages() {
       }
     })
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load older messages', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('chat.failedToLoadOlder'), life: 3000 })
   } finally {
     loadingOlder.value = false
   }
@@ -151,7 +153,7 @@ async function performSearch() {
     chatStore.setMessages(reversed, result.total)
     scrollToBottom()
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Search failed', life: 3000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('chat.searchFailed'), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -180,8 +182,8 @@ async function sendMessage() {
     messageInput.value = ''
     // The message will echo back through WebSocket
   } catch (err: any) {
-    const detail = err.response?.data?.message || 'Failed to send message'
-    toast.add({ severity: 'error', summary: 'Error', detail, life: 3000 })
+    const detail = err.response?.data?.message || t('chat.failedToSend')
+    toast.add({ severity: 'error', summary: t('common.error'), detail, life: 3000 })
   } finally {
     sending.value = false
   }
@@ -230,14 +232,14 @@ onUnmounted(() => {
 <template>
   <div class="chat-view">
     <div class="page-header">
-      <h1 class="page-title">Chat</h1>
+      <h1 class="page-title">{{ t('chat.title') }}</h1>
       <div class="chat-controls">
         <div class="search-bar">
           <span class="p-input-icon-left">
             <i class="pi pi-search" />
             <InputText
               v-model="searchQuery"
-              placeholder="Search messages..."
+              :placeholder="t('chat.searchPlaceholder')"
               class="search-input"
               @input="onSearchInput"
             />
@@ -248,7 +250,7 @@ onUnmounted(() => {
           :options="chatTypeOptions"
           optionLabel="label"
           optionValue="value"
-          placeholder="All Types"
+          :placeholder="t('chat.allTypes')"
           class="type-filter"
           @change="onFilterChange"
         />
@@ -259,7 +261,7 @@ onUnmounted(() => {
           text
           rounded
           @click="clearSearch"
-          v-tooltip.bottom="'Clear search'"
+          v-tooltip.bottom="t('chat.clearSearch')"
         />
       </div>
     </div>
@@ -268,26 +270,26 @@ onUnmounted(() => {
       <!-- Loading indicator -->
       <div v-if="loading && chatStore.messages.length === 0" class="loading-state">
         <i class="pi pi-spin pi-spinner" style="font-size: 1.5rem" />
-        <span>Loading chat history...</span>
+        <span>{{ t('chat.loadingHistory') }}</span>
       </div>
 
       <!-- Search mode banner -->
       <div v-if="isSearchMode" class="search-banner">
         <i class="pi pi-search" />
-        <span>Showing search results. Real-time messages paused.</span>
+        <span>{{ t('chat.searchBanner') }}</span>
       </div>
 
       <!-- Older messages loader -->
       <div v-if="loadingOlder" class="older-loader">
         <i class="pi pi-spin pi-spinner" />
-        <span>Loading older messages...</span>
+        <span>{{ t('chat.loadingOlderMessages') }}</span>
       </div>
 
       <!-- Message feed -->
       <div ref="feedEl" class="message-feed" @scroll="onFeedScroll">
         <div v-if="!loading && chatStore.messages.length === 0" class="empty-state">
           <i class="pi pi-comments" style="font-size: 2rem; color: var(--kc-text-secondary)" />
-          <p>No messages yet. Chat messages will appear here in real-time.</p>
+          <p>{{ t('chat.noMessagesYet') }}</p>
         </div>
 
         <div
@@ -318,7 +320,7 @@ onUnmounted(() => {
           @click="autoScroll = true; scrollToBottom()"
         >
           <i class="pi pi-arrow-down" />
-          New messages
+          {{ t('chat.newMessages') }}
         </button>
       </Transition>
 
@@ -326,7 +328,7 @@ onUnmounted(() => {
       <div class="message-input-bar">
         <InputText
           v-model="messageInput"
-          :placeholder="isViewer ? 'Viewers cannot send messages' : 'Type a message...'"
+          :placeholder="isViewer ? t('chat.viewersCantSend') : t('chat.typeMessage')"
           class="message-input"
           :disabled="isViewer || sending"
           @keydown.enter="sendMessage"

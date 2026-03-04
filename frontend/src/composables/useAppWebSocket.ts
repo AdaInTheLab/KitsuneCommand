@@ -86,6 +86,13 @@ export function useAppWebSocket() {
       }
     })
 
+    ws.on<{ isActive: boolean; currentVotes: number; requiredVotes: number; totalOnline: number; bloodMoonDay: number }>(
+      'BloodMoonVoteUpdate',
+      (data) => {
+        serverStore.updateBloodMoonVote(data)
+      },
+    )
+
     ws.connect()
   }
 
