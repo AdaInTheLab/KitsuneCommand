@@ -42,6 +42,8 @@ describe('Auth Store', () => {
 
     auth.setTokens({
       access_token: 'new-token',
+      token_type: 'bearer',
+      expires_in: 86400,
       refresh_token: 'new-refresh',
       username: 'admin',
       display_name: 'Administrator',
@@ -67,6 +69,8 @@ describe('Auth Store', () => {
   it('login should call API and set tokens', async () => {
     const tokenResponse = {
       access_token: 'login-token',
+      token_type: 'bearer',
+      expires_in: 86400,
       refresh_token: 'login-refresh',
       username: 'admin',
       display_name: 'Admin',
@@ -97,6 +101,8 @@ describe('Auth Store', () => {
     // Set up logged-in state
     auth.setTokens({
       access_token: 'token',
+      token_type: 'bearer',
+      expires_in: 86400,
       refresh_token: 'refresh',
       username: 'admin',
       display_name: 'Admin',
