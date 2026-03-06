@@ -1,6 +1,10 @@
 # KitsuneCommand
 
 <p align="center">
+  <img src="docs/banner.png" alt="KitsuneCommand" width="600" />
+</p>
+
+<p align="center">
   <strong>Web-based server management for 7 Days to Die</strong><br>
   Monitoring | Management | Map
 </p>
