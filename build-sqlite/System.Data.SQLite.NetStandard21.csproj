@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ *
+ * System.Data.SQLite.NetStandard21.csproj -
+ *
+ * Written by Joe Mistachkin.
+ * Released to the public domain, use at your own risk!
+ *
+-->
+<Project ToolsVersion="16.0">
+  <!--
+  ******************************************************************************
+  **                     Import .NET Core SDK Properties                      **
+  ******************************************************************************
+  -->
+
+  <!--
+      WARNING: This project cannot use the recommended pattern of having the
+               "Project" element simply include the "Sdk" attribute, due to
+               the "BuildDependsOn" property not being honored, see:
+
+               https://github.com/Microsoft/msbuild/issues/1680
+
+               Instead, the .NET Core SDK properties file is imported here
+               and the corresponding targets file is imported right before
+               resetting the "BuildDependsOn" property to include targets
+               necessary for this project.
+  -->
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <!--
+  ******************************************************************************
+  **                       Project Specific Properties                        **
+  ******************************************************************************
+  -->
+
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{77BE07F7-8183-4A83-8AEC-D46A0C2C026D}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>System.Data.SQLite</RootNamespace>
+    <AssemblyName>System.Data.SQLite</AssemblyName>
+    <SQLiteNetDir>$(MSBuildProjectDirectory)\..</SQLiteNetDir>
+    <IsDotNetStandard>true</IsDotNetStandard>
+    <ConfigurationYear>NetStandard21</ConfigurationYear>
+  </PropertyGroup>
+
+  <!--
+  ******************************************************************************
+  **             Project / .NET Standard 2.1 Specific Properties              **
+  ******************************************************************************
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Deterministic>False</Deterministic>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+
+  <!--
+  ******************************************************************************
+  **    .NET Standard 2.1 Specific Strong Name Signing Property Overrides     **
+  ******************************************************************************
+  -->
+
+  <PropertyGroup>
+    <!--
+        NOTE: Apparently, the .NET Core build system sets the SignAssembly
+              property to false; therefore, reset it to true.  Also, delay
+              signing is currently non-functional due to the inability to
+              run the strong name signing tool (sn.exe).  It behaves badly
+              when run against a .NET Core assembly.
+    -->
+    <SignAssembly>true</SignAssembly>
+    <DelaySign>false</DelaySign>
+
+    <!--
+        TODO: Why is this needed?  It seems that public signing is quite
+              similar to delay signing.  Why is this necessary when not
+              running on Windows?
+    -->
+    <PublicSign Condition="'$(OS)' != 'Windows_NT'">true</PublicSign>
+  </PropertyGroup>
+
+  <!--
+  ******************************************************************************
+  **                    .NET Standard 2.1 Specific Targets                    **
+  ******************************************************************************
+  -->
+
+  <Target Name="GenerateResourcesForNetStandard21"
+          Condition="'$(GenerateResourcesForNetStandard21)' != 'false' And
+                     '$(BuildTool)' == 'DotNetCore' And
+                     '$(OperatingSystem)' == 'Windows' And
+                     '$(MSBuildProjectDirectory)' != '' And
+                     !HasTrailingSlash('$(MSBuildProjectDirectory)') And
+                     Exists('$(MSBuildProjectDirectory)\..\Externals\ResGen\ResGen.exe')"
+          Inputs="Resources\SR.resx"
+          Outputs="Generated\SR.resources">
+    <MakeDir Directories="Generated" />
+
+    <Exec Command="&quot;$(MSBuildProjectDirectory)\..\Externals\ResGen\ResGen.exe&quot; Resources\SR.resx Generated\SR.resources &quot;$(MSBuildProjectDirectory)\Resources&quot;" />
+  </Target>
+
+  <!--
+  ******************************************************************************
+  **                     Import Project Default Settings                      **
+  ******************************************************************************
+  -->
+
+  <Import Project="$(SQLiteNetDir)\Targets\SQLite.NET.Platform.Settings.targets" />
+  <Import Project="$(SQLiteNetDir)\Targets\SQLite.NET.Settings.targets" />
+
+  <!--
+  ******************************************************************************
+  **                       Import Project Build Targets                       **
+  ******************************************************************************
+  -->
+
+  <Import Project="$(SQLiteNetDir)\Targets\SQLite.NET.targets" />
+
+  <!--
+  ******************************************************************************
+  **               Convert Project Settings To MSBuild Settings               **
+  ******************************************************************************
+  -->
+
+  <PropertyGroup Condition="'$(BinaryOutputPath)' != ''">
+    <OutputPath>$(BinaryOutputPath)</OutputPath>
+    <DocumentationFile>$(BinaryOutputPath)netstandard2.1\System.Data.SQLite.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <!--
+  ******************************************************************************
+  **                Project Configuration Specific Properties                 **
+  ******************************************************************************
+  -->
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+
+  <!--
+  ******************************************************************************
+  -->
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <Optimize>true</Optimize>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+
+  <!--
+  ******************************************************************************
+  **                        Import Assembly References                        **
+  ******************************************************************************
+  -->
+
+  <Import Project="$(MSBuildProjectDirectory)\Targets\System.Data.SQLite.References.targets" />
+
+  <!--
+  ******************************************************************************
+  **       Import Project Compile-Time Options (i.e. Define Constants)        **
+  ******************************************************************************
+  -->
+
+  <Import Project="$(MSBuildProjectDirectory)\Targets\System.Data.SQLite.Properties.targets" />
+
+  <!--
+  ******************************************************************************
+  **                     Import Project Source Code Files                     **
+  ******************************************************************************
+  -->
+
+  <Import Project="$(MSBuildProjectDirectory)\Targets\System.Data.SQLite.Files.targets" />
+
+  <!--
+  ******************************************************************************
+  **                     Project Embedded Resource Files                      **
+  ******************************************************************************
+  -->
+
+  <ItemGroup>
+    <EmbeddedResource Include="Generated\SR.resources">
+      <LogicalName>System.Data.SQLite.SR.resources</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <!--
+  ******************************************************************************
+  **                       Import .NET Core SDK Targets                       **
+  ******************************************************************************
+  -->
+
+  <!--
+      WARNING: This project cannot use the recommended pattern of having the
+               "Project" element simply include the "Sdk" attribute, see the
+               comment at the top of this file for more information.
+  -->
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <!--
+  ******************************************************************************
+  **                  Add Targets To BuildDependsOn Property                  **
+  ******************************************************************************
+  -->
+
+  <PropertyGroup>
+    <BuildDependsOn>
+      DetectBuildTool;
+      DetectOperatingSystem;
+      GenerateResourcesForNetStandard21;
+      $(BuildDependsOn);
+      CopyConfigurations;
+    </BuildDependsOn>
+    <CleanDependsOn>
+      $(CleanDependsOn);
+      CleanConfigurations;
+    </CleanDependsOn>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -1,13 +1,17 @@
 param(
     [string]$Configuration = "Release",
-    [string]$OutputDir = "./dist"
+    [string]$OutputDir = "./dist",
+    [ValidateSet("windows", "linux", "both")]
+    [string]$Platform = "both"
 )
 
 $ErrorActionPreference = "Stop"
 $modName = "KitsuneCommand"
 $modDir = "$OutputDir/$modName"
+$nugetCache = "$env:USERPROFILE/.nuget/packages"
 
 Write-Host "=== KitsuneCommand Build Script ===" -ForegroundColor Cyan
+Write-Host "  Platform: $Platform" -ForegroundColor Gray
 
 # Clean
 if (Test-Path $OutputDir) {
@@ -30,48 +34,82 @@ dotnet build "src/$modName/$modName.csproj" -c $Configuration
 Write-Host "`n--- Packaging Mod ---" -ForegroundColor Yellow
 $binDir = "src/$modName/bin/$Configuration"
 Copy-Item "$binDir/*.dll" $modDir
+Copy-Item "$binDir/$modName.dll.config" $modDir
+Copy-Item "$binDir/System.Data.SQLite.dll.config" $modDir
 Copy-Item "src/$modName/ModInfo.xml" $modDir
 
-# Copy SQLite.Interop.dll (native component for System.Data.SQLite)
-# Must be in a subfolder so the game's mod loader doesn't try to load it as a managed assembly
-$interopSrc = "$binDir/x64/SQLite.Interop.dll"
-if (Test-Path $interopSrc) {
-    $nativeDir = "$modDir/x64"
-    New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
-    Copy-Item $interopSrc $nativeDir
-    Write-Host "  Copied SQLite.Interop.dll to x64/" -ForegroundColor Gray
-} else {
-    Write-Warning "SQLite.Interop.dll not found at $interopSrc — SQLite may fail at runtime!"
+# --- Windows native libraries ---
+if ($Platform -eq "windows" -or $Platform -eq "both") {
+    Write-Host "`n  [Windows native libraries]" -ForegroundColor Cyan
+
+    # sqlite3.dll (renamed from SQLite.Interop.dll)
+    # System.Data.SQLite is built with SQLITE_STANDARD, so P/Invoke target is "sqlite3".
+    # We ship the native SQLite library as sqlite3.dll so Mono can find it.
+    $interopSrc = "$binDir/x64/SQLite.Interop.dll"
+    if (Test-Path $interopSrc) {
+        $nativeDir = "$modDir/x64"
+        New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
+        Copy-Item $interopSrc "$nativeDir/sqlite3.dll"
+        Write-Host "    Copied SQLite.Interop.dll as sqlite3.dll to x64/" -ForegroundColor Gray
+    } else {
+        Write-Warning "SQLite.Interop.dll not found at $interopSrc"
+    }
+
+    # libSkiaSharp.dll (Windows)
+    $skiaWinPaths = @(
+        "$nugetCache/skiasharp.nativeassets.win32/3.116.1/runtimes/win-x64/native/libSkiaSharp.dll",
+        "$nugetCache/skiasharp.nativeassets.win32/2.80.4/runtimes/win-x64/native/libSkiaSharp.dll",
+        "$binDir/libSkiaSharp.dll"
+    )
+    $skiaWin = $skiaWinPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($skiaWin) {
+        $nativeDir = "$modDir/x64"
+        New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
+        Copy-Item $skiaWin $nativeDir
+        Write-Host "    Copied libSkiaSharp.dll to x64/" -ForegroundColor Gray
+    } else {
+        Write-Warning "libSkiaSharp.dll (Windows) not found"
+    }
+
+    # System.Runtime.InteropServices.RuntimeInformation is provided by RuntimeInfoShim.dll
+    # (cross-platform, compiled from src/RuntimeInfoShim). Do NOT copy the Windows SDK version
+    # — it's a Windows-only binary that crashes Mono on Linux and conflicts with our shim.
+    Write-Host "    RuntimeInformation: provided by RuntimeInfoShim.dll (cross-platform)" -ForegroundColor Gray
 }
 
-# Copy libSkiaSharp native binary (required by SkiaSharp for map rendering)
-# Must be in x64/ subfolder so the game's mod loader doesn't try to load it as a managed assembly
-$skiaSharpNative = "$env:USERPROFILE/.nuget/packages/skiasharp.nativeassets.win32/3.116.1/runtimes/win-x64/native/libSkiaSharp.dll"
-if (Test-Path $skiaSharpNative) {
-    $nativeDir = "$modDir/x64"
-    New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
-    Copy-Item $skiaSharpNative $nativeDir
-    Write-Host "  Copied libSkiaSharp.dll to x64/ (native)" -ForegroundColor Gray
-} else {
-    Write-Warning "libSkiaSharp.dll not found — Map rendering may fail at runtime!"
-}
-
-# Copy System.ComponentModel.DataAnnotations (required by System.Web.Http, not in Unity/Mono)
+# System.ComponentModel.DataAnnotations (required by System.Web.Http, not in Unity/Mono)
+# This is a managed assembly needed on BOTH Windows and Linux.
 $dataAnnotations = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.ComponentModel.DataAnnotations.dll'
 if (Test-Path $dataAnnotations) {
     Copy-Item $dataAnnotations $modDir
-    Write-Host "  Copied System.ComponentModel.DataAnnotations.dll" -ForegroundColor Gray
+    Write-Host "  Copied System.ComponentModel.DataAnnotations.dll (cross-platform)" -ForegroundColor Gray
 } else {
-    Write-Warning "System.ComponentModel.DataAnnotations.dll not found — Web API may fail at runtime!"
+    Write-Warning "System.ComponentModel.DataAnnotations.dll not found"
 }
 
-# Copy System.Runtime.InteropServices.RuntimeInformation (required by SkiaSharp 3.x, not in Unity/Mono)
-$runtimeInfo = 'C:\Program Files\dotnet\sdk\8.0.418\Microsoft\Microsoft.NET.Build.Extensions\net462\lib\System.Runtime.InteropServices.RuntimeInformation.dll'
-if (Test-Path $runtimeInfo) {
-    Copy-Item $runtimeInfo $modDir
-    Write-Host "  Copied System.Runtime.InteropServices.RuntimeInformation.dll" -ForegroundColor Gray
-} else {
-    Write-Warning "System.Runtime.InteropServices.RuntimeInformation.dll not found — Map rendering may fail at runtime!"
+# --- Linux native libraries ---
+if ($Platform -eq "linux" -or $Platform -eq "both") {
+    Write-Host "`n  [Linux native libraries]" -ForegroundColor Cyan
+
+    # libSkiaSharp.so (Linux, NoDependencies variant)
+    $skiaLinuxPaths = @(
+        "$nugetCache/skiasharp.nativeassets.linux.nodependencies/2.80.4/runtimes/linux-x64/native/libSkiaSharp.so",
+        "$nugetCache/skiasharp.nativeassets.linux.nodependencies/2.80.2/runtimes/linux-x64/native/libSkiaSharp.so"
+    )
+    $skiaLinux = $skiaLinuxPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($skiaLinux) {
+        $nativeDir = "$modDir/linux-x64"
+        New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
+        Copy-Item $skiaLinux $nativeDir
+        Write-Host "    Copied libSkiaSharp.so to linux-x64/" -ForegroundColor Gray
+    } else {
+        Write-Warning "libSkiaSharp.so (Linux) not found. Run 'dotnet restore' to download NuGet packages."
+    }
+
+    # SQLite: no native library needed for Linux!
+    # System.Data.SQLite is built with SQLITE_STANDARD, so it P/Invokes "sqlite3".
+    # Mono's global config maps sqlite3 -> libsqlite3.so.0 (system package).
+    Write-Host "    SQLite: uses system libsqlite3 (no native library to ship)" -ForegroundColor Gray
 }
 
 # Copy config
@@ -89,4 +127,5 @@ New-Item -ItemType Directory -Path "$modDir/Plugins" -Force | Out-Null
 
 Write-Host "`n=== Build Complete ===" -ForegroundColor Green
 Write-Host "Mod packaged to: $modDir" -ForegroundColor Green
+Write-Host "Platform: $Platform" -ForegroundColor Gray
 Write-Host "Copy the '$modDir' folder to your 7D2D server's Mods/ directory." -ForegroundColor Gray

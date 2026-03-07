@@ -64,7 +64,8 @@ KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that pr
 ## Requirements
 
 - 7 Days to Die Dedicated Server (V2.5+)
-- .NET Framework 4.8 runtime (included with Windows)
+- **Windows**: .NET Framework 4.8 runtime (included with Windows)
+- **Linux**: Mono runtime (included with 7D2D server), `libsqlite3-0` (usually pre-installed)
 - For building from source: .NET SDK 8.0+ and Node.js 18+
 
 ## Installation
@@ -77,18 +78,23 @@ KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that pr
        KitsuneCommand/
          ModInfo.xml
          KitsuneCommand.dll
+         KitsuneCommand.dll.config
          Config/
            Migrations/
            appsettings.json
          wwwroot/
          Plugins/
-         x64/
+         x64/                       # Windows native libraries
            SQLite.Interop.dll
            libSkiaSharp.dll
+         linux-x64/                 # Linux native libraries
+           libSkiaSharp.so
    ```
 3. Start your dedicated server
 4. Open `http://your-server-ip:8888` in a browser
 5. On first run, check the server console for your auto-generated admin credentials
+
+> **Linux note:** The same release ZIP works on both Windows and Linux. The mod auto-detects the platform and loads the correct native libraries. On Linux, SQLite uses the system's `libsqlite3` via Mono DLL mapping.
 
 ## Project Structure
 

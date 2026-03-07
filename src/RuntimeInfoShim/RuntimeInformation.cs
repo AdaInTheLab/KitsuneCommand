@@ -8,16 +8,24 @@ namespace System.Runtime.InteropServices
 {
     public static class RuntimeInformation
     {
+        private static readonly bool _isUnix =
+            Environment.OSVersion.Platform == PlatformID.Unix;
+
         public static string FrameworkDescription => ".NET Framework 4.8 (Mono)";
 
-        public static Architecture ProcessArchitecture => Architecture.X64;
+        public static Architecture ProcessArchitecture =>
+            IntPtr.Size == 8 ? Architecture.X64 : Architecture.X86;
 
-        public static Architecture OSArchitecture => Architecture.X64;
+        public static Architecture OSArchitecture =>
+            IntPtr.Size == 8 ? Architecture.X64 : Architecture.X86;
 
-        public static string OSDescription => "Microsoft Windows";
+        public static string OSDescription =>
+            _isUnix ? "Linux" : "Microsoft Windows";
 
         public static bool IsOSPlatform(OSPlatform osPlatform)
         {
+            if (_isUnix)
+                return osPlatform == OSPlatform.Linux;
             return osPlatform == OSPlatform.Windows;
         }
     }

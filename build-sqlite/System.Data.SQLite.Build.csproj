@@ -1,0 +1,82 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>System.Data.SQLite</AssemblyName>
+    <RootNamespace>System.Data.SQLite</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <SignAssembly>false</SignAssembly>
+    <Deterministic>false</Deterministic>
+    <LangVersion>7.3</LangVersion>
+    <DefineConstants>TRACE;SQLITE_STANDARD;USE_PREPARE_V2;NET_20;NET_35;NET_40;NET_45;NET_451;NET_452;NET_46;NET_461;NET_462;NET_47;NET_471;NET_472;NET_48;CHECK_STATE;COUNT_HANDLE;THROW_ON_DISPOSED;TRACK_MEMORY_BYTES;INTEROP_VIRTUAL_TABLE;INTEROP_SESSION_EXTENSION</DefineConstants>
+    <NoWarn>CS0618;CS0612;CS0168;CS0219;CS0162</NoWarn>
+  </PropertyGroup>
+
+  <!-- Core source files -->
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="AssemblySourceIdAttribute.cs" />
+    <Compile Include="AssemblySourceTimeStampAttribute.cs" />
+    <Compile Include="HelperMethods.cs" />
+    <Compile Include="SQLite3.cs" />
+    <Compile Include="SQLite3_UTF16.cs" />
+    <Compile Include="SQLiteBackup.cs" />
+    <Compile Include="SQLiteBase.cs" />
+    <Compile Include="SQLiteBlob.cs" />
+    <Compile Include="SQLiteCommand.cs" />
+    <Compile Include="SQLiteCommandBuilder.cs" />
+    <Compile Include="SQLiteConnection.cs" />
+    <Compile Include="SQLiteConnectionPool.cs" />
+    <Compile Include="SQLiteConnectionStringBuilder.cs" />
+    <Compile Include="SQLiteConvert.cs" />
+    <Compile Include="SQLiteDataAdapter.cs" />
+    <Compile Include="SQLiteDataReader.cs" />
+    <Compile Include="SQLiteDefineConstants.cs" />
+    <Compile Include="SQLiteEnlistment.cs" />
+    <Compile Include="SQLiteException.cs" />
+    <Compile Include="SQLiteFactory.cs" />
+    <Compile Include="SQLiteFunction.cs" />
+    <Compile Include="SQLiteFunctionAttribute.cs" />
+    <Compile Include="SQLiteKeyReader.cs" />
+    <Compile Include="SQLiteLog.cs" />
+    <Compile Include="SQLiteMetaDataCollectionNames.cs" />
+    <Compile Include="SQLiteParameter.cs" />
+    <Compile Include="SQLiteParameterCollection.cs" />
+    <Compile Include="SQLitePatchLevel.cs" />
+    <Compile Include="SQLiteStatement.cs" />
+    <Compile Include="SQLiteTransaction.cs" />
+    <Compile Include="SQLiteTransaction2.cs" />
+    <Compile Include="SQLiteTransactionBase.cs" />
+    <Compile Include="UnsafeNativeMethods.cs" />
+    <Compile Include="Resources\SR.Designer.cs" />
+    <!-- LINQ partial classes -->
+    <Compile Include="LINQ\SQLiteConnection_Linq.cs" />
+    <Compile Include="LINQ\SQLiteFactory_Linq.cs" />
+    <!-- Virtual table support (provides SQLiteMemory, SQLiteString, SQLiteBytes utilities) -->
+    <Compile Include="ISQLiteNativeModule.cs" />
+    <Compile Include="SQLiteModule.cs" />
+    <Compile Include="SQLiteModuleCommon.cs" />
+    <Compile Include="SQLiteModuleEnumerable.cs" />
+    <Compile Include="SQLiteModuleNoop.cs" />
+    <!-- Session extension -->
+    <Compile Include="SQLiteSession.cs" />
+  </ItemGroup>
+
+  <!-- Embedded resources -->
+  <ItemGroup>
+    <EmbeddedResource Include="Generated\SR.resources">
+      <LogicalName>System.Data.SQLite.SR.resources</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\SQLiteCommand.bmp" />
+    <EmbeddedResource Include="Resources\SQLiteConnection.bmp" />
+    <EmbeddedResource Include="Resources\SQLiteDataAdapter.bmp" />
+  </ItemGroup>
+
+  <!-- Framework references -->
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+</Project>
