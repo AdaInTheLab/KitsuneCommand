@@ -91,8 +91,10 @@ KitsuneCommand is an open-source mod for 7 Days to Die dedicated servers that pr
            libSkiaSharp.so
    ```
 3. Start your dedicated server
-4. Open `http://your-server-ip:8888` in a browser
+4. Open `http://your-server-ip:8890` in a browser
 5. On first run, check the server console for your auto-generated admin credentials
+
+> **Port note:** The web panel runs on port **8890**, not port 8888. Port 8888 is used internally for the API backend, but a lightweight frontend server on port 8890 handles login and proxies API calls to 8888 automatically. This split is needed due to a compatibility issue between 7D2D's Unity/Mono runtime and the OWIN OAuth middleware.
 
 > **Linux note:** The same release ZIP works on both Windows and Linux. The mod auto-detects the platform and loads the correct native libraries. On Linux, SQLite uses the system's `libsqlite3` via Mono DLL mapping.
 
@@ -213,7 +215,8 @@ Settings are stored in `<SaveGameDir>/KitsuneCommand/appsettings.json`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `WebUrl` | `http://*:8888` | HTTP server bind address |
+| `WebUrl` | `http://*:8888` | Internal API bind address (do not change; access the panel on port **8890**) |
+| `WebPanelPort` | `8890` | Frontend/login port — this is what you open in your browser |
 | `WebSocketPort` | `8889` | WebSocket server port |
 | `DatabasePath` | `KitsuneCommand.db` | SQLite database location |
 | `AccessTokenExpireMinutes` | `1440` | Auth token lifetime (24h) |
