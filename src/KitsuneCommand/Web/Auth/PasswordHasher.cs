@@ -16,7 +16,10 @@ namespace KitsuneCommand.Web.Auth
         {
             try
             {
-                return BCrypt.Net.BCrypt.Verify(password, hash);
+                // BCrypt.Net.BCrypt.Verify is broken under Unity's Mono runtime.
+                // Instead, re-hash with the stored hash as salt and compare strings.
+                var rehashed = BCrypt.Net.BCrypt.HashPassword(password, hash);
+                return string.Equals(rehashed, hash, StringComparison.Ordinal);
             }
             catch (Exception)
             {

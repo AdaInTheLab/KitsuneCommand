@@ -214,13 +214,52 @@ namespace KitsuneCommand.Web
                     return;
                 }
 
-                var authService = _container.Resolve<AuthService>();
-                var account = authService.ValidateCredentials(username, password);
+                var userRepo = _container.Resolve<Data.Repositories.IUserAccountRepository>();
+                var account = userRepo.GetByUsername(username);
                 if (account == null)
                 {
                     WriteJson(ctx, 400, new { error = "invalid_grant", error_description = "Invalid username or password." });
                     return;
                 }
+
+                bool verified = Auth.PasswordHasher.Verify(password, account.PasswordHash);
+
+                if (!verified)
+                {
+                    // Emergency password reset mechanism: if BCrypt verification fails (e.g. hash
+                    // was corrupted or the Mono runtime mangled it), the server admin can place a
+                    // plaintext RESET_PASSWORD.txt in the save-game KitsuneCommand folder. When the
+                    // submitted password matches that file's contents, the password is re-hashed
+                    // with BCrypt and the reset file is deleted, restoring normal login.
+                    try
+                    {
+                        var resetFile = Path.Combine(GameIO.GetSaveGameDir(), "KitsuneCommand", "RESET_PASSWORD.txt");
+                        if (File.Exists(resetFile))
+                        {
+                            var resetPassword = File.ReadAllText(resetFile).Trim();
+                            if (password == resetPassword)
+                            {
+                                var newHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);
+                                userRepo.UpdatePassword(account.Id, newHash);
+                                File.Delete(resetFile);
+                                Log.Out("[KitsuneCommand] Password reset via RESET_PASSWORD.txt — file deleted.");
+                                verified = true;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning($"[KitsuneCommand] Error checking reset file: {ex.Message}");
+                    }
+                }
+
+                if (!verified)
+                {
+                    WriteJson(ctx, 400, new { error = "invalid_grant", error_description = "Invalid username or password." });
+                    return;
+                }
+
+                userRepo.UpdateLastLogin(username);
 
                 var expiresIn = TimeSpan.FromMinutes(_settings.AccessTokenExpireMinutes);
                 var token = TokenValidator.CreateToken(
