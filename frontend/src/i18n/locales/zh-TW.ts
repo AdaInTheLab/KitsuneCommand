@@ -855,6 +855,7 @@ const zhTW: Messages = {
       blockDamage: '方塊傷害',
       gameplay: '遊戲玩法',
       zombies: '殭屍',
+      bloodMoon: '血月',
       lootAndDrops: '戰利品與掉落',
       landClaims: '領地聲明',
       networkAndSlots: '網路與插槽',

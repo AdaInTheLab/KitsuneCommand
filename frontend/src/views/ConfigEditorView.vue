@@ -8,10 +8,6 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
-import Accordion from 'primevue/accordion'
-import AccordionPanel from 'primevue/accordionpanel'
-import AccordionHeader from 'primevue/accordionheader'
-import AccordionContent from 'primevue/accordioncontent'
 import Textarea from 'primevue/textarea'
 import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
@@ -39,12 +35,16 @@ const isDirty = computed(() => {
   return JSON.stringify(properties.value) !== JSON.stringify(originalProperties.value)
 })
 
+const coreGroup = computed(() => groups.value.find(g => g.key === 'core'))
+const otherGroups = computed(() => groups.value.filter(g => g.key !== 'core'))
+
 const groupLabels: Record<string, string> = {
   core: 'config.group.core',
   world: 'config.group.world',
   blockDamage: 'config.group.blockDamage',
   gameplay: 'config.group.gameplay',
   zombies: 'config.group.zombies',
+  bloodMoon: 'config.group.bloodMoon',
   lootAndDrops: 'config.group.lootAndDrops',
   landClaims: 'config.group.landClaims',
   networkAndSlots: 'config.group.networkAndSlots',
@@ -95,10 +95,8 @@ async function handleSave() {
     if (activeTab.value === 'raw') {
       await saveRawXml(rawXml.value)
       rawXmlOriginal.value = rawXml.value
-      // Reload form properties after raw save
       loadConfig()
     } else {
-      // Only send changed properties
       const changed: Record<string, string> = {}
       for (const key of Object.keys(properties.value)) {
         if (properties.value[key] !== originalProperties.value[key]) {
@@ -142,7 +140,6 @@ function setBoolValue(key: string, value: boolean) {
 }
 
 function getSelectOptions(field: { key: string; options?: string[]; labels?: string[] }) {
-  // Special case: GameWorld includes detected worlds
   if (field.key === 'GameWorld') {
     const opts = [...(field.options || []), ...worlds.value]
     return [...new Set(opts)].map(v => ({ label: v, value: v }))
@@ -200,74 +197,102 @@ onMounted(loadConfig)
 
     <!-- Form View -->
     <div v-else-if="activeTab === 'form'" class="form-view">
-      <Accordion :multiple="true" :value="['0', '1']">
-        <AccordionPanel v-for="(group, idx) in groups" :key="group.key" :value="String(idx)">
-          <AccordionHeader>{{ t(groupLabels[group.key] || group.key) }}</AccordionHeader>
-          <AccordionContent>
-            <div class="field-grid">
-              <div v-for="field in group.fields" :key="field.key" class="field-item">
-                <label class="field-label">{{ t('config.field.' + field.key, field.key) }}</label>
-                <small v-if="field.description" class="field-description">{{ field.description }}</small>
+      <!-- Core Settings — prominent card with 2-col field grid -->
+      <div v-if="coreGroup" class="core-card">
+        <div class="core-header">
+          <div class="core-accent" />
+          <h3 class="group-title">{{ t(groupLabels[coreGroup.key] || coreGroup.key) }}</h3>
+        </div>
+        <div class="core-fields">
+          <div v-for="field in coreGroup.fields" :key="field.key" class="field-item">
+            <label class="field-label">{{ t('config.field.' + field.key, field.key) }}</label>
+            <small v-if="field.description" class="field-description">{{ field.description }}</small>
+            <InputText
+              v-if="field.type === 'text'"
+              :modelValue="getFieldValue(field.key)"
+              @update:modelValue="setFieldValue(field.key, String($event ?? ''))"
+              class="field-input"
+            />
+            <div v-else-if="field.type === 'password'" class="password-field">
+              <InputText
+                :modelValue="getFieldValue(field.key)"
+                @update:modelValue="setFieldValue(field.key, String($event ?? ''))"
+                :type="passwordVisible[field.key] ? 'text' : 'password'"
+                class="field-input"
+              />
+              <button type="button" class="password-toggle" @click="passwordVisible[field.key] = !passwordVisible[field.key]">
+                <i :class="passwordVisible[field.key] ? 'pi pi-eye-slash' : 'pi pi-eye'" />
+              </button>
+            </div>
+            <Select
+              v-else-if="field.type === 'select'"
+              :modelValue="getFieldValue(field.key)"
+              @update:modelValue="setFieldValue(field.key, $event)"
+              :options="getSelectOptions(field)"
+              optionLabel="label"
+              optionValue="value"
+              class="field-input"
+            />
+          </div>
+        </div>
+      </div>
 
-                <!-- Text field -->
+      <!-- Other groups — 3-column card grid -->
+      <div class="groups-grid">
+        <div v-for="group in otherGroups" :key="group.key" class="group-card">
+          <div class="group-card-header">
+            {{ t(groupLabels[group.key] || group.key) }}
+          </div>
+          <div class="group-card-fields">
+            <div v-for="field in group.fields" :key="field.key" class="field-item">
+              <label class="field-label">{{ t('config.field.' + field.key, field.key) }}</label>
+              <small v-if="field.description" class="field-description">{{ field.description }}</small>
+
+              <InputText
+                v-if="field.type === 'text'"
+                :modelValue="getFieldValue(field.key)"
+                @update:modelValue="setFieldValue(field.key, String($event ?? ''))"
+                class="field-input"
+              />
+              <div v-else-if="field.type === 'password'" class="password-field">
                 <InputText
-                  v-if="field.type === 'text'"
                   :modelValue="getFieldValue(field.key)"
                   @update:modelValue="setFieldValue(field.key, String($event ?? ''))"
+                  :type="passwordVisible[field.key] ? 'text' : 'password'"
                   class="field-input"
                 />
-
-                <!-- Password field -->
-                <div v-else-if="field.type === 'password'" class="password-field">
-                  <InputText
-                    :modelValue="getFieldValue(field.key)"
-                    @update:modelValue="setFieldValue(field.key, String($event ?? ''))"
-                    :type="passwordVisible[field.key] ? 'text' : 'password'"
-                    class="field-input"
-                  />
-                  <button
-                    type="button"
-                    class="password-toggle"
-                    @click="passwordVisible[field.key] = !passwordVisible[field.key]"
-                  >
-                    <i :class="passwordVisible[field.key] ? 'pi pi-eye-slash' : 'pi pi-eye'" />
-                  </button>
-                </div>
-
-                <!-- Number field -->
-                <InputNumber
-                  v-else-if="field.type === 'number'"
-                  :modelValue="Number(getFieldValue(field.key)) || 0"
-                  @update:modelValue="setFieldValue(field.key, String($event ?? 0))"
-                  :min="field.min ?? undefined"
-                  :max="field.max ?? undefined"
-                  class="field-input"
-                />
-
-                <!-- Boolean field -->
-                <div v-else-if="field.type === 'bool'" class="bool-field">
-                  <ToggleSwitch
-                    :modelValue="getBoolValue(field.key)"
-                    @update:modelValue="setBoolValue(field.key, $event)"
-                  />
-                  <span class="bool-label">{{ getBoolValue(field.key) ? t('common.enabled') : t('common.disabled') }}</span>
-                </div>
-
-                <!-- Select field -->
-                <Select
-                  v-else-if="field.type === 'select'"
-                  :modelValue="getFieldValue(field.key)"
-                  @update:modelValue="setFieldValue(field.key, $event)"
-                  :options="getSelectOptions(field)"
-                  optionLabel="label"
-                  optionValue="value"
-                  class="field-input"
-                />
+                <button type="button" class="password-toggle" @click="passwordVisible[field.key] = !passwordVisible[field.key]">
+                  <i :class="passwordVisible[field.key] ? 'pi pi-eye-slash' : 'pi pi-eye'" />
+                </button>
               </div>
+              <InputNumber
+                v-else-if="field.type === 'number'"
+                :modelValue="Number(getFieldValue(field.key)) || 0"
+                @update:modelValue="setFieldValue(field.key, String($event ?? 0))"
+                :min="field.min ?? undefined"
+                :max="field.max ?? undefined"
+                class="field-input"
+              />
+              <div v-else-if="field.type === 'bool'" class="bool-field">
+                <ToggleSwitch
+                  :modelValue="getBoolValue(field.key)"
+                  @update:modelValue="setBoolValue(field.key, $event)"
+                />
+                <span class="bool-label">{{ getBoolValue(field.key) ? t('common.enabled') : t('common.disabled') }}</span>
+              </div>
+              <Select
+                v-else-if="field.type === 'select'"
+                :modelValue="getFieldValue(field.key)"
+                @update:modelValue="setFieldValue(field.key, $event)"
+                :options="getSelectOptions(field)"
+                optionLabel="label"
+                optionValue="value"
+                class="field-input"
+              />
             </div>
-          </AccordionContent>
-        </AccordionPanel>
-      </Accordion>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Raw XML View -->
@@ -349,51 +374,88 @@ onMounted(loadConfig)
   color: var(--kc-text-secondary);
 }
 
-/* Accordion dark theme overrides */
-.form-view :deep(.p-accordionpanel) {
+.form-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Core Settings — prominent card at top */
+.core-card {
+  background: linear-gradient(135deg, var(--kc-bg-secondary) 0%, var(--kc-bg-card) 100%);
   border: 1px solid var(--kc-border);
-  border-radius: 10px;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-  background: var(--kc-bg-secondary);
+  border-radius: 12px;
+  padding: 1.25rem;
 }
 
-.form-view :deep(.p-accordionheader) {
-  background: var(--kc-bg-secondary);
-  border: none;
-  color: var(--kc-text-primary);
-  font-weight: 600;
+.core-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.core-accent {
+  width: 4px;
+  height: 22px;
+  border-radius: 4px;
+  background: linear-gradient(to bottom, var(--kc-cyan), var(--kc-cyan-dark));
+}
+
+.group-title {
   font-size: 0.95rem;
-  padding: 0.85rem 1.25rem;
-  transition: background 0.15s;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--kc-text-primary);
+  margin: 0;
 }
 
-.form-view :deep(.p-accordionheader:hover) {
-  background: var(--kc-bg-card);
+.core-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
 }
 
-.form-view :deep(.p-accordionheader[aria-expanded="true"]) {
+/* Group cards — 3-column grid */
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.group-card {
+  background: rgba(26, 35, 50, 0.5);
+  border: 1px solid var(--kc-border);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.group-card-header {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--kc-text-secondary);
+  font-weight: 600;
+  padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--kc-border);
 }
 
-.form-view :deep(.p-accordioncontent-content) {
-  background: transparent;
-  border: none;
-  padding: 1rem 1.25rem;
+.group-card-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
-/* Field grid */
-.field-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.25rem;
-  padding: 0.25rem 0;
-}
-
+/* Fields */
 .field-item {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.25rem;
 }
 
 .field-label {
@@ -405,18 +467,17 @@ onMounted(loadConfig)
 }
 
 .field-description {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--kc-text-secondary);
-  opacity: 0.65;
+  opacity: 0.6;
   line-height: 1.3;
-  margin-top: -0.1rem;
 }
 
-/* Form input dark theme overrides */
 .field-input {
   width: 100%;
 }
 
+/* Form input dark theme */
 .form-view :deep(.p-inputtext),
 .form-view :deep(.p-inputnumber-input),
 .form-view :deep(.p-select) {
@@ -471,15 +532,15 @@ onMounted(loadConfig)
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding-top: 0.25rem;
+  padding-top: 0.15rem;
 }
 
 .bool-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--kc-text-secondary);
 }
 
-/* Raw XML editor */
+/* Raw XML */
 .raw-view {
   flex: 1;
 }
@@ -504,9 +565,14 @@ onMounted(loadConfig)
   box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.15);
 }
 
+@media (max-width: 1200px) {
+  .groups-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
 @media (max-width: 768px) {
   .page-header { flex-direction: column; }
   .header-actions { flex-wrap: wrap; }
-  .field-grid { grid-template-columns: 1fr; }
+  .core-fields { grid-template-columns: 1fr; }
+  .groups-grid { grid-template-columns: 1fr; }
 }
 </style>
