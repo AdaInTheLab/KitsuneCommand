@@ -131,7 +131,7 @@ onUnmounted(() => {
             v-else
             :to="item.route!"
             class="nav-item"
-            :class="{ 'nav-item--active': item.route === '/' ? route.path === '/' : route.path.startsWith(item.route!) }"
+            :class="{ 'nav-item--active': item.route === '/' ? route.path === '/' : (route.path === item.route || route.path.startsWith(item.route! + '/')) }"
             :title="sidebarCollapsed ? item.label : undefined"
           >
             <i :class="item.icon" class="nav-icon"></i>
