@@ -1061,6 +1061,8 @@ const en = {
     logRetentionHint: 'How many output_log__*.txt files to keep. Older ones are trimmed on each start.',
     steamAppId: 'Steam app ID',
     steamAppIdHint: '251570 = 7 Days to Die (Linux). Rarely needs changing.',
+    steamUsername: 'Steam username',
+    steamUsernameHint: 'Leave empty to use anonymous login (works only for free dedicated-server apps like 294420). For 251570 (7D2D main game, used on Linux), set your Steam username. One-time cache: SSH to the server and run <code>steamcmd +login {user} +quit</code>, enter your password and Steam Guard code. KC never stores your password.',
     saveSettings: 'Save settings',
 
     stickyConfig: 'Sticky serverconfig.xml',

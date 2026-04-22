@@ -1064,6 +1064,8 @@ const ja: Messages = {
     logRetentionHint: 'How many output_log__*.txt files to keep. Older ones are trimmed on each start.',
     steamAppId: 'Steam app ID',
     steamAppIdHint: '251570 = 7 Days to Die (Linux). Rarely needs changing.',
+    steamUsername: 'Steamユーザー名',
+    steamUsernameHint: '空欄の場合は匿名ログイン（無料の専用サーバーアプリ 294420 など）。251570（7D2D 本体、Linux で使用）では Steam ユーザー名を入力してください。初回のみ: サーバーに SSH して <code>steamcmd +login {user} +quit</code> を実行し、パスワードと Steam Guard コードを入力。KC はパスワードを保存しません。',
     saveSettings: 'Save settings',
 
     stickyConfig: 'Sticky serverconfig.xml',

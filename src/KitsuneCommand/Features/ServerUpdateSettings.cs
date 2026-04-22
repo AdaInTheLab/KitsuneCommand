@@ -27,5 +27,14 @@ namespace KitsuneCommand.Features
 
         /// <summary>Steam app ID. 251570 = 7 Days to Die (main game, used for Linux dedicated).</summary>
         public int SteamAppId { get; set; } = 251570;
+
+        /// <summary>
+        /// Steam account username used by steamcmd. Leave empty to use anonymous login
+        /// (only works for freely-downloadable depots like 294420). For app 251570 on
+        /// Linux, set your Steam username and run `steamcmd +login &lt;user&gt; +quit` once
+        /// interactively to cache credentials - KC never stores your password or Steam
+        /// Guard codes.
+        /// </summary>
+        public string SteamUsername { get; set; } = "";
     }
 }

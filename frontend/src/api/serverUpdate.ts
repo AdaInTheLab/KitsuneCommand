@@ -6,6 +6,7 @@ export interface ServerUpdateSettings {
   branchPassword: string
   logRetention: number
   steamAppId: number
+  steamUsername: string
 }
 
 export async function getServerUpdateSettings(): Promise<ServerUpdateSettings> {
