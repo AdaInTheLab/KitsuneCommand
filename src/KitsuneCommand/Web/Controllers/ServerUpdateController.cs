@@ -69,7 +69,10 @@ namespace KitsuneCommand.Web.Controllers
             if (content == null)
                 return Ok(ApiResponse.Error(404, "serverconfig.xml.bak does not exist yet. Save settings here to create it."));
 
-            return Ok(ApiResponse.Ok(content));
+            // Explicit generic arg: ApiResponse.Ok(string) hits the non-generic message
+            // overload and the payload lands in `message` instead of `data`. The frontend
+            // reads res.data.data, which would be undefined without this.
+            return Ok(ApiResponse.Ok<string>(content));
         }
 
         /// <summary>
