@@ -34,10 +34,12 @@ if [ -f "$CONF" ]; then
                     BETA_ARGS="$BETA_ARGS -betapassword ${BranchPassword}"
                 fi
             fi
-            log "Running steamcmd update for app $APP_ID ${BETA_ARGS:-(public branch)}..."
+            LOGIN_USER="${SteamUsername:-anonymous}"
+            [ -z "$LOGIN_USER" ] && LOGIN_USER="anonymous"
+            log "Running steamcmd update for app $APP_ID as '$LOGIN_USER' ${BETA_ARGS:-(public branch)}..."
             # shellcheck disable=SC2086
-            "$STEAMCMD" +force_install_dir "$SERVER_DIR" +login anonymous +app_update "$APP_ID" $BETA_ARGS validate +quit \
-                || log "WARN: steamcmd returned non-zero. Continuing with existing install."
+            "$STEAMCMD" +force_install_dir "$SERVER_DIR" +login "$LOGIN_USER" +app_update "$APP_ID" $BETA_ARGS validate +quit \
+                || log "WARN: steamcmd returned non-zero. Continuing with existing install. If using a non-anonymous account, make sure you've cached credentials first: steamcmd +login $LOGIN_USER +quit"
         else
             log "WARN: steamcmd not found at $STEAMCMD - skipping update."
         fi

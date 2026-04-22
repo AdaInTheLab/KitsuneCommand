@@ -130,6 +130,7 @@ namespace KitsuneCommand.Features
                 sb.AppendLine($"BranchPassword={Settings.BranchPassword ?? ""}");
                 sb.AppendLine($"LogRetention={Settings.LogRetention}");
                 sb.AppendLine($"SteamAppId={Settings.SteamAppId}");
+                sb.AppendLine($"SteamUsername={Settings.SteamUsername ?? ""}");
                 File.WriteAllText(_confPath, sb.ToString(), new UTF8Encoding(false));
             }
             catch (System.Exception ex)

@@ -1064,6 +1064,8 @@ const zhCN: Messages = {
     logRetentionHint: 'How many output_log__*.txt files to keep. Older ones are trimmed on each start.',
     steamAppId: 'Steam app ID',
     steamAppIdHint: '251570 = 7 Days to Die (Linux). Rarely needs changing.',
+    steamUsername: 'Steam 用户名',
+    steamUsernameHint: '留空使用匿名登录（仅适用于 294420 等免费专用服务器应用）。对于 251570（Linux 上使用的 7D2D 本体），请设置你的 Steam 用户名。一次性缓存: 登录服务器运行 <code>steamcmd +login {user} +quit</code>，输入密码和 Steam Guard 验证码。KC 不会存储你的密码。',
     saveSettings: 'Save settings',
 
     stickyConfig: 'Sticky serverconfig.xml',

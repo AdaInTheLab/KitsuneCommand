@@ -34,6 +34,7 @@ const settings = ref<ServerUpdateSettings>({
   branchPassword: '',
   logRetention: 20,
   steamAppId: 251570,
+  steamUsername: '',
 })
 
 const configBak = ref<string>('')
@@ -155,6 +156,12 @@ onMounted(loadAll)
               <label class="form-label">{{ t('serverUpdate.steamAppId') }}</label>
               <InputNumber v-model="settings.steamAppId" :min="1" :useGrouping="false" />
               <small class="settings-hint">{{ t('serverUpdate.steamAppIdHint') }}</small>
+            </div>
+
+            <div class="form-group form-group--wide">
+              <label class="form-label">{{ t('serverUpdate.steamUsername') }}</label>
+              <InputText v-model="settings.steamUsername" placeholder="anonymous" spellcheck="false" autocomplete="off" />
+              <small class="settings-hint" v-html="t('serverUpdate.steamUsernameHint', { user: settings.steamUsername || 'your-steam-user' })"></small>
             </div>
           </div>
 
@@ -286,6 +293,8 @@ onMounted(loadAll)
   flex-direction: column;
   gap: 0.35rem;
 }
+
+.form-group--wide { grid-column: 1 / -1; }
 
 .form-label {
   font-size: 0.85rem;
