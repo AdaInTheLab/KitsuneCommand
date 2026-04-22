@@ -29,6 +29,7 @@ namespace KitsuneCommand.Core
             builder.RegisterType<ChatPersistenceService>().AsSelf().SingleInstance();
             builder.RegisterType<GameItemCatalog>().AsSelf().SingleInstance();
             builder.RegisterType<ItemIconService>().AsSelf().SingleInstance();
+            builder.RegisterType<SteamRegistrationTracker>().AsSelf().SingleInstance();
 
             // Server management services
             builder.RegisterType<ServerConfigService>().AsSelf().SingleInstance();

@@ -180,6 +180,10 @@ namespace KitsuneCommand.Core
             var iconService = _container.Resolve<ItemIconService>();
             iconService.Initialize();
 
+            // Initialize Steam/EOS registration tracker (subscribes to log events)
+            var steamTracker = _container.Resolve<SteamRegistrationTracker>();
+            steamTracker.Initialize();
+
             // Initialize backup service (loads settings and starts scheduler if enabled)
             var backupService = _container.Resolve<BackupService>();
             backupService.Initialize();
