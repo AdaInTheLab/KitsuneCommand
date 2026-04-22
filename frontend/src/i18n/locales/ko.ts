@@ -855,6 +855,7 @@ const ko: Messages = {
       blockDamage: '블록 데미지',
       gameplay: '게임플레이',
       zombies: '좀비',
+      bloodMoon: '블러드 문',
       lootAndDrops: '전리품 및 드롭',
       landClaims: '토지 소유권',
       networkAndSlots: '네트워크 및 슬롯',

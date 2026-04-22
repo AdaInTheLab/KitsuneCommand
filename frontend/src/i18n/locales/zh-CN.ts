@@ -855,6 +855,7 @@ const zhCN: Messages = {
       blockDamage: '方块伤害',
       gameplay: '游戏玩法',
       zombies: '僵尸',
+      bloodMoon: '血月',
       lootAndDrops: '战利品与掉落',
       landClaims: '领地声明',
       networkAndSlots: '网络与槽位',

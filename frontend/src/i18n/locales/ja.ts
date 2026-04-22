@@ -839,6 +839,7 @@ const ja: Messages = {
       blockDamage: 'ブロックダメージ',
       gameplay: 'ゲームプレイ',
       zombies: 'ゾンビ',
+      bloodMoon: 'ブラッドムーン',
       lootAndDrops: 'ルート＆ドロップ',
       landClaims: 'ランドクレーム',
       networkAndSlots: 'ネットワーク＆スロット',

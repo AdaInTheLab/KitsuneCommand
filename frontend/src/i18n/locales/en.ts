@@ -851,6 +851,7 @@ const en = {
       blockDamage: 'Block Damage',
       gameplay: 'Gameplay',
       zombies: 'Zombies',
+      bloodMoon: 'Blood Moon',
       lootAndDrops: 'Loot & Drops',
       landClaims: 'Land Claims',
       networkAndSlots: 'Network & Slots',
