@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Web.Http;
 using KitsuneCommand.Core;
+using KitsuneCommand.Services;
 using KitsuneCommand.Web.Auth;
 using KitsuneCommand.Web.Models;
 
@@ -19,6 +20,13 @@ namespace KitsuneCommand.Web.Controllers
     [RoutePrefix("api/server")]
     public class ServerController : ApiController
     {
+        private readonly SteamRegistrationTracker _steamTracker;
+
+        public ServerController(SteamRegistrationTracker steamTracker)
+        {
+            _steamTracker = steamTracker;
+        }
+
         /// <summary>
         /// Get basic server information.
         /// </summary>
@@ -28,6 +36,7 @@ namespace KitsuneCommand.Web.Controllers
         {
             var world = GameManager.Instance?.World;
             var gameManager = GameManager.Instance;
+            var serverVisibility = GamePrefs.GetInt(EnumGamePrefs.ServerVisibility);
 
             var info = new
             {
@@ -46,7 +55,13 @@ namespace KitsuneCommand.Web.Controllers
                 version = Constants.cVersionInformation.LongString,
                 kitsuneCommandVersion = "2.0.0",
                 localIp = GetLocalIp(),
-                publicIp = GetPublicIp()
+                publicIp = GetPublicIp(),
+                // Reachability: derived from Steam/EOS master-server registration state.
+                // Not an active port check - it's "Steam thinks we're browse-listable".
+                serverVisibility,                              // 0=hidden, 1=friends, 2=public
+                steamRegistered = _steamTracker?.IsRegistered ?? false,
+                eosRegistered = _steamTracker?.IsEosRegistered ?? false,
+                steamServerId = _steamTracker?.SteamServerId
             };
 
             return Ok(ApiResponse.Ok(info));

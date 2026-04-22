@@ -18,6 +18,10 @@ export interface ServerInfo {
   kitsuneCommandVersion: string
   localIp: string
   publicIp: string
+  serverVisibility?: number       // 0 = hidden, 1 = friends, 2 = public
+  steamRegistered?: boolean
+  eosRegistered?: boolean
+  steamServerId?: string | null
 }
 
 export interface ServerStats {

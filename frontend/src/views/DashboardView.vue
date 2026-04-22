@@ -70,6 +70,40 @@ const votePercent = computed(() => {
   return Math.min(100, Math.round((vote.currentVotes / vote.requiredVotes) * 100))
 })
 
+// Reachability derived from Steam/EOS master-server registration state.
+// If ServerVisibility=0 (hidden), we don't expect Steam registration and just say 'Hidden'.
+// If ServerVisibility!=0 but Steam didn't register, we're not reachable via browse list.
+const reachabilityClass = computed(() => {
+  const info = serverInfo.value
+  if (!info) return 'reachability--unknown'
+  if (info.serverVisibility === 0) return 'reachability--hidden'
+  if (info.steamRegistered) return 'reachability--ok'
+  return 'reachability--bad'
+})
+const reachabilityIcon = computed(() => {
+  const c = reachabilityClass.value
+  if (c === 'reachability--ok') return 'pi pi-check-circle'
+  if (c === 'reachability--hidden') return 'pi pi-eye-slash'
+  if (c === 'reachability--bad') return 'pi pi-exclamation-triangle'
+  return 'pi pi-question-circle'
+})
+const reachabilityLabel = computed(() => {
+  const c = reachabilityClass.value
+  if (c === 'reachability--ok') return t('dashboard.reachableOk')
+  if (c === 'reachability--hidden') return t('dashboard.reachableHidden')
+  if (c === 'reachability--bad') return t('dashboard.reachableBad')
+  return t('dashboard.reachableUnknown')
+})
+const reachabilityTooltip = computed(() => {
+  const info = serverInfo.value
+  if (!info) return ''
+  const parts: string[] = []
+  parts.push(`ServerVisibility: ${info.serverVisibility}`)
+  parts.push(`Steam registered: ${info.steamRegistered ? 'yes' : 'no'}`)
+  parts.push(`EOS registered: ${info.eosRegistered ? 'yes' : 'no'}`)
+  return parts.join(' · ')
+})
+
 function confirmForceSkip() {
   confirmDialog.require({
     message: t('dashboard.forceSkipConfirm'),
@@ -299,16 +333,20 @@ onMounted(() => {
               </div>
               <div class="info-item">
                 <span class="info-label">{{ t('dashboard.localIp') }}</span>
-                <span class="info-value monospace copyable" @click="copyToClipboard(serverInfo.localIp)">
-                  {{ serverInfo.localIp }}
+                <span class="info-value monospace copyable" @click="copyToClipboard(`${serverInfo.localIp}:${serverInfo.serverPort}`)">
+                  {{ serverInfo.localIp }}<span class="port-suffix">:{{ serverInfo.serverPort }}</span>
                   <i class="pi pi-copy copy-icon" />
                 </span>
               </div>
               <div class="info-item">
                 <span class="info-label">{{ t('dashboard.publicIp') }}</span>
-                <span class="info-value monospace copyable" @click="copyToClipboard(serverInfo.publicIp)">
-                  {{ serverInfo.publicIp }}
+                <span class="info-value monospace copyable" @click="copyToClipboard(`${serverInfo.publicIp}:${serverInfo.serverPort}`)">
+                  {{ serverInfo.publicIp }}<span class="port-suffix">:{{ serverInfo.serverPort }}</span>
                   <i class="pi pi-copy copy-icon" />
+                </span>
+                <span class="reachability" :class="reachabilityClass" :title="reachabilityTooltip">
+                  <i :class="reachabilityIcon" />
+                  {{ reachabilityLabel }}
                 </span>
               </div>
               <div class="info-item">
@@ -447,6 +485,25 @@ onMounted(() => {
 .info-card, .activity-card { background: var(--kc-bg-card); border: 1px solid var(--kc-border); }
 .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
 .info-item { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.port-suffix { color: var(--kc-text-secondary); font-weight: normal; }
+
+.reachability {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  margin-top: 0.2rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.35rem;
+  width: fit-content;
+  letter-spacing: 0.02em;
+  cursor: help;
+}
+.reachability--ok      { color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+.reachability--bad     { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.reachability--hidden  { color: var(--kc-text-secondary); background: rgba(148, 163, 184, 0.1); }
+.reachability--unknown { color: var(--kc-text-secondary); background: rgba(148, 163, 184, 0.1); }
 .info-label { font-size: 0.8rem; color: var(--kc-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
 .info-value { font-size: 1rem; }
 .info-value.monospace { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; }
