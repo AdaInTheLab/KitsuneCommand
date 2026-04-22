@@ -228,19 +228,27 @@ namespace KitsuneCommand.Features
                 result.NeedsGuardCode = true;
                 return result;
             }
-            if (combined.IndexOf("Login Failure", StringComparison.OrdinalIgnoreCase) >= 0
-                || combined.IndexOf("InvalidPassword", StringComparison.OrdinalIgnoreCase) >= 0
-                || combined.IndexOf("Account Logon Denied", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (combined.IndexOf("Invalid Password", StringComparison.OrdinalIgnoreCase) >= 0
+                || combined.IndexOf("InvalidPassword", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 result.Success = false;
-                result.Message = "Login failed. Check username and password.";
+                result.Message = "Invalid password. Double-check the password for your Steam account and try again. Note: Steam rate-limits after several wrong attempts - wait 30+ min if you get locked out.";
+                return result;
+            }
+            if (combined.IndexOf("Login Failure", StringComparison.OrdinalIgnoreCase) >= 0
+                || combined.IndexOf("Account Logon Denied", StringComparison.OrdinalIgnoreCase) >= 0
+                || combined.IndexOf("RateLimitExceeded", StringComparison.OrdinalIgnoreCase) >= 0
+                || combined.IndexOf("Rate Limit", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                result.Success = false;
+                result.Message = "Login failed. Wrong username, rate-limited by Steam (wait 30+ min), or account restriction. See server log for the raw steamcmd output.";
                 return result;
             }
 
-            // Unknown - dump a short tail of the output for debugging
-            var snippet = combined.Length > 400 ? combined.Substring(combined.Length - 400) : combined;
+            // Unknown - log the raw output for post-mortem, but return a short user-friendly message.
+            Log.Warning($"[KitsuneCommand] SteamAuth: unexpected steamcmd output. Raw:\n{combined}");
             result.Success = false;
-            result.Message = "steamcmd returned unexpected output. Tail: " + snippet.Replace("\r", " ").Replace("\n", " | ");
+            result.Message = "steamcmd returned an unexpected response. Check the server log for the raw output.";
             return result;
         }
 
