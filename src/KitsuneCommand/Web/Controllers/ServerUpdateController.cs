@@ -1,0 +1,102 @@
+using System.Linq;
+using System.Web.Http;
+using KitsuneCommand.Features;
+using KitsuneCommand.Web.Auth;
+using KitsuneCommand.Web.Models;
+
+namespace KitsuneCommand.Web.Controllers
+{
+    [Authorize]
+    [RoutePrefix("api/server-update")]
+    public class ServerUpdateController : ApiController
+    {
+        private readonly FeatureManager _featureManager;
+
+        public ServerUpdateController(FeatureManager featureManager)
+        {
+            _featureManager = featureManager;
+        }
+
+        private ServerUpdateFeature GetFeature()
+        {
+            return _featureManager.GetAllFeatures()
+                .OfType<ServerUpdateFeature>()
+                .FirstOrDefault();
+        }
+
+        [HttpGet]
+        [Route("settings")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult GetSettings()
+        {
+            var feature = GetFeature();
+            if (feature == null)
+                return Ok(ApiResponse.Error(404, "ServerUpdate feature not available."));
+
+            return Ok(ApiResponse.Ok(feature.Settings));
+        }
+
+        [HttpPut]
+        [Route("settings")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult UpdateSettings([FromBody] ServerUpdateSettings model)
+        {
+            if (model == null)
+                return BadRequest("Request body is required.");
+
+            var feature = GetFeature();
+            if (feature == null)
+                return Ok(ApiResponse.Error(404, "ServerUpdate feature not available."));
+
+            feature.UpdateSettings(model);
+            return Ok(ApiResponse.Ok($"ServerUpdate settings saved. AutoUpdate={(model.AutoUpdate ? "ON" : "OFF")}, Branch={model.Branch}."));
+        }
+
+        /// <summary>
+        /// Read the sticky serverconfig.xml.bak - the copy that gets restored over
+        /// serverconfig.xml on every server start. This is where admins make durable edits.
+        /// </summary>
+        [HttpGet]
+        [Route("config-bak")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult GetConfigBak()
+        {
+            var feature = GetFeature();
+            if (feature == null)
+                return Ok(ApiResponse.Error(404, "ServerUpdate feature not available."));
+
+            var content = feature.GetServerConfigBak();
+            if (content == null)
+                return Ok(ApiResponse.Error(404, "serverconfig.xml.bak does not exist yet. Save settings here to create it."));
+
+            return Ok(ApiResponse.Ok(content));
+        }
+
+        /// <summary>
+        /// Write new contents to serverconfig.xml.bak. Takes effect on next server restart.
+        /// </summary>
+        [HttpPut]
+        [Route("config-bak")]
+        [RoleAuthorize("admin")]
+        public IHttpActionResult SetConfigBak([FromBody] ConfigBakRequest model)
+        {
+            if (model == null || string.IsNullOrEmpty(model.Content))
+                return BadRequest("Request body with non-empty 'content' is required.");
+
+            var feature = GetFeature();
+            if (feature == null)
+                return Ok(ApiResponse.Error(404, "ServerUpdate feature not available."));
+
+            var success = feature.SetServerConfigBak(model.Content);
+            if (!success)
+                return Ok(ApiResponse.Error(500, "Failed to write serverconfig.xml.bak - check server logs."));
+
+            return Ok(ApiResponse.Ok("serverconfig.xml.bak saved. Will apply on next server restart."));
+        }
+
+        public class ConfigBakRequest
+        {
+            public string Content { get; set; }
+        }
+    }
+}
