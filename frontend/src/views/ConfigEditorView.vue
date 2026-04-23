@@ -11,6 +11,25 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import Textarea from 'primevue/textarea'
 import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
+import DayNightCycleWidget from '@/components/DayNightCycleWidget.vue'
+
+/**
+ * camelCase / PascalCase → human-readable title case.
+ * Used as a fallback when no i18n translation exists for a given field key.
+ * Handles acronyms ("EAC" → "EAC") and common 7D2D prefixes like "AI".
+ */
+function formatFieldLabel(key: string): string {
+  return key
+    // Insert space between camelCase transitions (e.g. "dayNight" → "day Night")
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    // Preserve acronym boundaries (e.g. "XPMultiplier" → "XP Multiplier")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    // Title-case each word, leaving all-caps acronyms alone
+    .replace(/\b[a-z]/g, (c) => c.toUpperCase())
+}
+
+/** Keys handled by the DayNightCycleWidget — skip rendering them individually. */
+const DAY_NIGHT_KEYS = ['DayNightLength', 'DayLightLength']
 
 const { t } = useI18n()
 const toast = useToast()
@@ -41,8 +60,9 @@ const otherGroups = computed(() => groups.value.filter(g => g.key !== 'core'))
 const groupLabels: Record<string, string> = {
   core: 'config.group.core',
   world: 'config.group.world',
-  blockDamage: 'config.group.blockDamage',
+  player: 'config.group.player',
   gameplay: 'config.group.gameplay',
+  blockDamage: 'config.group.blockDamage',
   zombies: 'config.group.zombies',
   bloodMoon: 'config.group.bloodMoon',
   lootAndDrops: 'config.group.lootAndDrops',
@@ -50,6 +70,21 @@ const groupLabels: Record<string, string> = {
   networkAndSlots: 'config.group.networkAndSlots',
   admin: 'config.group.admin',
   advanced: 'config.group.advanced',
+}
+
+/** Fallback display name if no i18n translation exists for a group key. */
+const fallbackGroupTitles: Record<string, string> = {
+  world: 'World',
+  player: 'Player',
+  gameplay: 'Gameplay',
+  blockDamage: 'Block Damage',
+  zombies: 'Zombies',
+  bloodMoon: 'Blood Moon',
+  lootAndDrops: 'Loot & Drops',
+  landClaims: 'Land Claims',
+  networkAndSlots: 'Network & Slots',
+  admin: 'Admin',
+  advanced: 'Advanced',
 }
 
 async function loadConfig() {
@@ -150,6 +185,22 @@ function getSelectOptions(field: { key: string; options?: string[]; labels?: str
   }))
 }
 
+/**
+ * Fields we want to render individually in a group's grid. For gameplay, skip
+ * DayNightLength + DayLightLength because the DayNightCycleWidget covers them.
+ */
+function visibleFieldsFor(group: ConfigFieldGroup) {
+  if (group.key === 'gameplay') {
+    return group.fields.filter((f) => !DAY_NIGHT_KEYS.includes(f.key))
+  }
+  return group.fields
+}
+
+function onDayNightUpdate(cfg: { DayNightLength: number; DayLightLength: number }) {
+  setFieldValue('DayNightLength', String(cfg.DayNightLength))
+  setFieldValue('DayLightLength', String(cfg.DayLightLength))
+}
+
 onMounted(loadConfig)
 </script>
 
@@ -205,7 +256,7 @@ onMounted(loadConfig)
         </div>
         <div class="core-fields">
           <div v-for="field in coreGroup.fields" :key="field.key" class="field-item">
-            <label class="field-label">{{ t('config.field.' + field.key, field.key) }}</label>
+            <label class="field-label">{{ t('config.field.' + field.key, formatFieldLabel(field.key)) }}</label>
             <small v-if="field.description" class="field-description">{{ field.description }}</small>
             <InputText
               v-if="field.type === 'text'"
@@ -241,11 +292,22 @@ onMounted(loadConfig)
       <div class="groups-grid">
         <div v-for="group in otherGroups" :key="group.key" class="group-card">
           <div class="group-card-header">
-            {{ t(groupLabels[group.key] || group.key) }}
+            {{ t(groupLabels[group.key] || group.key, fallbackGroupTitles[group.key] || group.key) }}
           </div>
           <div class="group-card-fields">
-            <div v-for="field in group.fields" :key="field.key" class="field-item">
-              <label class="field-label">{{ t('config.field.' + field.key, field.key) }}</label>
+            <!-- Day/Night cycle widget lives in the gameplay group, above the grid -->
+            <div
+              v-if="group.key === 'gameplay'"
+              class="field-item field-item-widget"
+            >
+              <DayNightCycleWidget
+                :dayNightLength="Number(getFieldValue('DayNightLength')) || 60"
+                :dayLightLength="Number(getFieldValue('DayLightLength')) || 18"
+                @update="onDayNightUpdate"
+              />
+            </div>
+            <div v-for="field in visibleFieldsFor(group)" :key="field.key" class="field-item">
+              <label class="field-label">{{ t('config.field.' + field.key, formatFieldLabel(field.key)) }}</label>
               <small v-if="field.description" class="field-description">{{ field.description }}</small>
 
               <InputText
@@ -451,26 +513,31 @@ onMounted(loadConfig)
   gap: 0.85rem;
 }
 
+/* Widget field items fill their row, no label stacking */
+.field-item-widget {
+  width: 100%;
+}
+
 /* Fields */
 .field-item {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
 }
 
 .field-label {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--kc-text-primary);
-  font-family: monospace;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .field-description {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: var(--kc-text-secondary);
-  opacity: 0.6;
-  line-height: 1.3;
+  opacity: 0.82;
+  line-height: 1.45;
+  margin-bottom: 0.15rem;
 }
 
 .field-input {
