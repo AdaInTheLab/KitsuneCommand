@@ -4,7 +4,12 @@ namespace KitsuneCommand.Services
 {
     /// <summary>
     /// Defines all known serverconfig.xml fields with metadata for the config editor UI.
-    /// Covers all vanilla 7D2D V2 server settings.
+    /// Covers vanilla 7D2D V2 server settings.
+    ///
+    /// Descriptions are written to be useful at editing-time — what the field does, a
+    /// sensible default, and the side-effect of cranking it up or down. Tone is warm
+    /// but practical; the Den voice peeks through where it helps, never at the cost of
+    /// clarity.
     /// </summary>
     public static class ServerConfigFieldDefinitions
     {
@@ -17,13 +22,21 @@ namespace KitsuneCommand.Services
                     Key = "core",
                     Fields = new List<ConfigFieldDef>
                     {
-                        TextField("ServerName", "My 7D2D Server", "Display name shown in the server browser"),
-                        PasswordField("ServerPassword", "", "Password required to join the server (blank = no password)"),
-                        TextField("ServerDescription", "A 7 Days to Die Server", "Description shown in the server browser listing"),
-                        TextField("ServerLoginConfirmationText", "", "Message players must accept before joining"),
-                        TextField("ServerWebsiteURL", "", "URL shown in the server browser as a clickable link"),
-                        SelectField("Region", "NorthAmericaEast", new[] { "NorthAmericaEast", "NorthAmericaWest", "CentralAmerica", "SouthAmerica", "Europe", "Russia", "Asia", "MiddleEast", "Africa", "Oceania" }, description: "Server region for browser filtering"),
-                        TextField("Language", "English", "Primary language for this server"),
+                        TextField("ServerName", "My 7D2D Server",
+                            "The name shown in the 7D2D server browser. Keep it recognizable — this is how players find you."),
+                        PasswordField("ServerPassword", "",
+                            "Required to join the server. Leave blank for an open server; set a password to gate it to friends-only."),
+                        TextField("ServerDescription", "A 7 Days to Die Server",
+                            "Shown in the server browser under your name. Supports [RRGGBB]color[-] tags — e.g. [FF6B35]Kitsune Den[-]."),
+                        TextField("ServerLoginConfirmationText", "",
+                            "Rules or welcome message players must accept before joining. Blank = no confirmation dialog."),
+                        TextField("ServerWebsiteURL", "",
+                            "Shown as a clickable link in the server browser. Usually your Discord invite or community page."),
+                        SelectField("Region", "NorthAmericaEast",
+                            new[] { "NorthAmericaEast", "NorthAmericaWest", "CentralAmerica", "SouthAmerica", "Europe", "Russia", "Asia", "MiddleEast", "Africa", "Oceania" },
+                            description: "Region tag used by the browser's region filter. Pick the one closest to your host for best default visibility."),
+                        TextField("Language", "English",
+                            "Primary language players should expect. Use the English name (e.g. \"German\", not \"Deutsch\")."),
                     }
                 },
                 new ConfigFieldGroup
@@ -31,22 +44,51 @@ namespace KitsuneCommand.Services
                     Key = "world",
                     Fields = new List<ConfigFieldDef>
                     {
-                        SelectField("GameWorld", "Navezgane", new[] { "Navezgane", "RWG" }, description: "Navezgane = fixed map, RWG = random generated"),
-                        TextField("WorldGenSeed", "SomeSeed", "Seed string used for random world generation"),
-                        SelectField("WorldGenSize", "6144", new[] { "6144", "8192", "10240" }, description: "RWG world size in blocks"),
-                        TextField("GameName", "My Game", "Save game name — changing this starts a new save"),
-                        SelectField("GameMode", "GameModeSurvival", new[] { "GameModeSurvival" }, description: "Game mode for the server"),
+                        SelectField("GameWorld", "Navezgane", new[] { "Navezgane", "RWG" },
+                            description: "Navezgane is the hand-built map (fast boot). RWG generates a fresh random world from the seed below."),
+                        TextField("WorldGenSeed", "SomeSeed",
+                            "Seed string for RWG. Same seed + size always produces the same layout — share it with friends to coordinate worlds."),
+                        SelectField("WorldGenSize", "6144", new[] { "6144", "8192", "10240" },
+                            description: "Width of the generated RWG world in blocks. Bigger = more variety and longer generation time (5–20 min)."),
+                        TextField("GameName", "My Game",
+                            "Save name for this world's state. Changing this creates a brand new save — handy for a fresh start on the same seed."),
+                        SelectField("GameMode", "GameModeSurvival", new[] { "GameModeSurvival" },
+                            description: "Only GameModeSurvival ships with V2. Here for forward compatibility."),
                     }
                 },
                 new ConfigFieldGroup
                 {
-                    Key = "blockDamage",
+                    Key = "player",
                     Fields = new List<ConfigFieldDef>
                     {
-                        SelectField("BlockDamagePlayer", "100", DamagePercentOptions(), description: "Player block damage multiplier (%)"),
-                        SelectField("BlockDamageAI", "100", DamagePercentOptions(), description: "Zombie block damage multiplier (%)"),
-                        SelectField("BlockDamageAIBM", "100", DamagePercentOptions(), description: "Blood moon zombie block damage multiplier (%)"),
-                        SelectField("XPMultiplier", "100", DamagePercentOptions(), description: "XP gain multiplier (%)"),
+                        SelectField("PlayerKillingMode", "3",
+                            new[] { "0", "1", "2", "3" },
+                            new[] { "No Killing (PvE)", "Kill Allies Only", "Kill Strangers Only", "Kill Everyone (PvP)" },
+                            "PvP rules. \"No Killing\" makes this a pure PvE server."),
+                        SelectField("DeathPenalty", "1",
+                            new[] { "0", "1", "2", "3" },
+                            new[] { "Nothing", "Classic XP Penalty", "Injured (debuffs persist)", "Permanent Death" },
+                            "What happens when you die. \"Nothing\" is the kindest option; Permanent Death wipes your character."),
+                        SelectField("DropOnDeath", "1",
+                            new[] { "0", "1", "2", "3", "4" },
+                            new[] { "Nothing (keep gear)", "Everything", "Toolbelt Only", "Backpack Only", "Delete All" },
+                            "What drops to a lootable backpack on death. \"Nothing\" keeps all gear with you."),
+                        SelectField("DropOnQuit", "1",
+                            new[] { "0", "1", "2", "3" },
+                            new[] { "Nothing", "Everything", "Toolbelt Only", "Backpack Only" },
+                            "What drops if a player disconnects mid-game. Usually left at Nothing."),
+                        NumberField("PlayerSafeZoneLevel", "5", 0, 100,
+                            "New players at or below this level spawn inside a temporary safe zone (no zombies). Onboarding buffer."),
+                        NumberField("PlayerSafeZoneHours", "5", 0, 100,
+                            "How many in-game hours the safe zone lasts before enemies can spawn."),
+                        SelectField("AllowSpawnNearFriend", "2",
+                            new[] { "0", "1", "2" },
+                            new[] { "Disabled", "Always", "Forest Biome Only" },
+                            "Can new players choose to spawn near a friend on join? Forest-only is a nice compromise."),
+                        SelectField("CameraRestrictionMode", "0",
+                            new[] { "0", "1", "2" },
+                            new[] { "Free (player's choice)", "First Person Only", "Third Person Only" },
+                            "Restrict what camera modes players can use. \"Free\" lets them swap mid-game."),
                     }
                 },
                 new ConfigFieldGroup
@@ -54,22 +96,40 @@ namespace KitsuneCommand.Services
                     Key = "gameplay",
                     Fields = new List<ConfigFieldDef>
                     {
-                        SelectField("GameDifficulty", "2", new[] { "0", "1", "2", "3", "4", "5" }, new[] { "0 - Scavenger", "1 - Adventurer", "2 - Nomad", "3 - Warrior", "4 - Survivalist", "5 - Insane" }, "Overall difficulty"),
-                        NumberField("DayNightLength", "60", 10, 240, "Real-time minutes per in-game 24h cycle"),
-                        NumberField("DayLightLength", "18", 1, 23, "In-game hours of daylight per day"),
-                        SelectField("PlayerKillingMode", "3", new[] { "0", "1", "2", "3" }, new[] { "0 - No Killing", "1 - Kill Allies Only", "2 - Kill Strangers Only", "3 - Kill Everyone" }, "PvP rules"),
-                        SelectField("DeathPenalty", "1", new[] { "0", "1", "2", "3" }, new[] { "0 - Nothing", "1 - Classic XP Penalty", "2 - Injured", "3 - Permanent Death" }, "Penalty after dying"),
-                        SelectField("DropOnDeath", "1", new[] { "0", "1", "2", "3", "4" }, new[] { "0 - Nothing", "1 - Everything", "2 - Toolbelt Only", "3 - Backpack Only", "4 - Delete All" }, "What drops when killed"),
-                        SelectField("DropOnQuit", "1", new[] { "0", "1", "2", "3" }, new[] { "0 - Nothing", "1 - Everything", "2 - Toolbelt Only", "3 - Backpack Only" }, "What drops when disconnecting"),
-                        NumberField("QuestProgressionDailyLimit", "3", 0, 100, "Max quest-tier progressions per day"),
-                        SelectField("JarRefund", "0", new[] { "0", "5", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100" }, description: "Empty jar refund percentage after consuming"),
-                        BoolField("BiomeProgression", "true", "Zombies get harder in further biomes"),
-                        NumberField("StormFreq", "100", 0, 500, "Weather storm frequency (%)"),
-                        BoolField("BuildCreate", "false", "Cheat/creative mode"),
-                        NumberField("PlayerSafeZoneLevel", "5", 0, 100, "Players at or below this level create a safe zone on spawn"),
-                        NumberField("PlayerSafeZoneHours", "5", 0, 100, "Hours the safe zone exists"),
-                        SelectField("AllowSpawnNearFriend", "2", new[] { "0", "1", "2" }, new[] { "0 - Disabled", "1 - Always", "2 - Forest Biome Only" }, "New players can spawn near friends"),
-                        SelectField("CameraRestrictionMode", "0", new[] { "0", "1", "2" }, new[] { "0 - Free", "1 - First Person Only", "2 - Third Person Only" }, "Camera mode restriction"),
+                        SelectField("GameDifficulty", "2",
+                            new[] { "0", "1", "2", "3", "4", "5" },
+                            new[] { "Scavenger", "Adventurer", "Nomad", "Warrior", "Survivalist", "Insane" },
+                            "Global difficulty. Nomad is the vanilla sweet spot; Survivalist for veterans; Insane for pain."),
+                        NumberField("DayNightLength", "60", 10, 240,
+                            "Real-time minutes per in-game 24h day. 60 = one hour real per in-game day. Pair with DayLightLength below to set the day/night split."),
+                        NumberField("DayLightLength", "18", 1, 23,
+                            "In-game hours the sun is up (rest is night). 18 is a generous ~75% daylight; drop to 12 for balanced day/night."),
+                        NumberField("QuestProgressionDailyLimit", "3", 0, 100,
+                            "Max quests that count toward trader-tier progression each day. Extra quests still pay out rewards."),
+                        SelectField("JarRefund", "0",
+                            new[] { "0", "5", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100" },
+                            description: "Percent chance an empty jar returns after drinking. 0 removes jar management; 100 is infinite jars."),
+                        BoolField("BiomeProgression", "true",
+                            "Enables biome hazards + loot-stage caps so players earn their way into harder zones. Turn off for a flatter curve."),
+                        NumberField("StormFreq", "100", 0, 500,
+                            "How often weather storms roll in. 0 disables storms; 500 is near-constant."),
+                        BoolField("BuildCreate", "false",
+                            "Creative mode toggle. Grants all items, no resource cost. Leave off unless you're building a showcase."),
+                    }
+                },
+                new ConfigFieldGroup
+                {
+                    Key = "blockDamage",
+                    Fields = new List<ConfigFieldDef>
+                    {
+                        SelectField("BlockDamagePlayer", "100", DamagePercentOptions(), DamagePercentLabels(),
+                            "How hard players hit blocks. 100% is vanilla; crank up for a quicker-build pace, down for long mining sessions."),
+                        SelectField("BlockDamageAI", "100", DamagePercentOptions(), DamagePercentLabels(),
+                            "How hard normal zombies damage blocks during regular days."),
+                        SelectField("BlockDamageAIBM", "100", DamagePercentOptions(), DamagePercentLabels(),
+                            "How hard blood-moon zombies damage blocks. The big one — this is what eats your base on horde night."),
+                        SelectField("XPMultiplier", "100", DamagePercentOptions(), DamagePercentLabels(),
+                            "Multiplies all XP gained. 125% is a gentle boost, 200% is generous, 300% is a speedrun."),
                     }
                 },
                 new ConfigFieldGroup
@@ -77,16 +137,32 @@ namespace KitsuneCommand.Services
                     Key = "zombies",
                     Fields = new List<ConfigFieldDef>
                     {
-                        BoolField("EnemySpawnMode", "true", "Enable/disable enemy spawning"),
-                        SelectField("EnemyDifficulty", "0", new[] { "0", "1" }, new[] { "0 - Normal", "1 - Feral" }, "Feral adds more challenging zombie types"),
-                        SelectField("ZombieFeralSense", "0", new[] { "0", "1", "2", "3" }, new[] { "0 - Off", "1 - Day", "2 - Night", "3 - All" }, "When ferals can sense players"),
-                        SelectField("ZombieMove", "0", ZombieMoveOptions(), ZombieMoveLabelOptions(), "Daytime zombie speed"),
-                        SelectField("ZombieMoveNight", "3", ZombieMoveOptions(), ZombieMoveLabelOptions(), "Nighttime zombie speed"),
-                        SelectField("ZombieFeralMove", "3", ZombieMoveOptions(), ZombieMoveLabelOptions(), "Feral zombie speed"),
-                        SelectField("ZombieBMMove", "3", ZombieMoveOptions(), ZombieMoveLabelOptions(), "Blood moon zombie speed"),
-                        SelectField("AISmellMode", "3", new[] { "0", "1", "2", "3", "4", "5" }, new[] { "0 - Off", "1 - Walk", "2 - Jog", "3 - Run", "4 - Sprint", "5 - Nightmare" }, "Zombie smell-tracking speed"),
-                        NumberField("MaxSpawnedZombies", "64", 1, 500, "Max alive zombies at once"),
-                        NumberField("MaxSpawnedAnimals", "50", 1, 500, "Max alive animals at once"),
+                        BoolField("EnemySpawnMode", "true",
+                            "Master switch for zombie spawns. Off means a quiet world with only scripted POI sleepers — not recommended for survival."),
+                        SelectField("EnemyDifficulty", "0",
+                            new[] { "0", "1" },
+                            new[] { "Normal", "Feral (tougher roster)" },
+                            "Feral adds higher-tier zombie variants to the mix. Bumps perceived difficulty noticeably."),
+                        SelectField("ZombieFeralSense", "0",
+                            new[] { "0", "1", "2", "3" },
+                            new[] { "Off", "Day only", "Night only", "Always" },
+                            "When feral zombies can home in on players through walls/roofs."),
+                        SelectField("ZombieMove", "0", ZombieMoveOptions(), ZombieMoveLabelOptions(),
+                            "Daytime zombie speed. Walk is classic; Jog makes early game meaner."),
+                        SelectField("ZombieMoveNight", "3", ZombieMoveOptions(), ZombieMoveLabelOptions(),
+                            "Nighttime zombie speed. Sprint/Nightmare at night is a whole other game."),
+                        SelectField("ZombieFeralMove", "3", ZombieMoveOptions(), ZombieMoveLabelOptions(),
+                            "Feral variants always move at this speed regardless of day/night."),
+                        SelectField("ZombieBMMove", "3", ZombieMoveOptions(), ZombieMoveLabelOptions(),
+                            "Blood moon horde speed. Sprint is intense; Walk is a gentle introduction."),
+                        SelectField("AISmellMode", "3",
+                            new[] { "0", "1", "2", "3", "4", "5" },
+                            new[] { "Off", "Walk", "Jog", "Run", "Sprint", "Nightmare" },
+                            "How fast zombies track scents (food smells, rotting flesh, etc). Higher = harder to lose them."),
+                        NumberField("MaxSpawnedZombies", "64", 1, 500,
+                            "Server-wide cap on alive zombies. 64 is vanilla; raise for chaos, lower if you see tick lag during hordes."),
+                        NumberField("MaxSpawnedAnimals", "50", 1, 500,
+                            "Server-wide cap on alive wildlife. Animals are cheap — raise if players complain hunting feels dead."),
                     }
                 },
                 new ConfigFieldGroup
@@ -94,10 +170,14 @@ namespace KitsuneCommand.Services
                     Key = "bloodMoon",
                     Fields = new List<ConfigFieldDef>
                     {
-                        NumberField("BloodMoonFrequency", "7", 0, 100, "Blood moon every N days (0 = disabled)"),
-                        NumberField("BloodMoonRange", "0", 0, 7, "Random +/- days deviation (0 = exact)"),
-                        NumberField("BloodMoonWarning", "8", -1, 22, "Hour the red day number appears (-1 = never)"),
-                        NumberField("BloodMoonEnemyCount", "8", 1, 64, "Max zombies per player during blood moon"),
+                        NumberField("BloodMoonFrequency", "7", 0, 100,
+                            "Blood moon every N days. 7 is vanilla. 0 disables horde night entirely — the world still has zombies, they just don't swarm."),
+                        NumberField("BloodMoonRange", "0", 0, 7,
+                            "Randomize blood moon day by ±N. 0 means exactly every Nth day; set to 2 for a 5–9 day window. Keeps things unpredictable."),
+                        NumberField("BloodMoonWarning", "8", -1, 22,
+                            "Hour of the day the red warning appears on-screen. 8 gives a day's warning; -1 disables the visual."),
+                        NumberField("BloodMoonEnemyCount", "8", 1, 64,
+                            "Max zombies per player during the horde. Per-player, so a 4-player server can see up to 4×N alive at peak."),
                     }
                 },
                 new ConfigFieldGroup
@@ -105,11 +185,16 @@ namespace KitsuneCommand.Services
                     Key = "lootAndDrops",
                     Fields = new List<ConfigFieldDef>
                     {
-                        SelectField("LootAbundance", "100", DamagePercentOptions(), description: "Loot quantity multiplier (%)"),
-                        NumberField("LootRespawnDays", "7", 1, 100, "Days before looted containers respawn"),
-                        NumberField("AirDropFrequency", "72", 0, 999, "Air drop interval in in-game hours (0 = disabled)"),
-                        BoolField("AirDropMarker", "true", "Show marker on map/compass for air drops"),
-                        NumberField("PartySharedKillRange", "100", 0, 10000, "Distance for shared party XP and quest credit"),
+                        SelectField("LootAbundance", "100", DamagePercentOptions(), DamagePercentLabels(),
+                            "Multiplier on container loot quantity. 100% is vanilla; 200% if you want pockets full faster."),
+                        NumberField("LootRespawnDays", "7", 1, 100,
+                            "In-game days before a looted container refills. 7 is vanilla; raise for a more scarcity-driven economy."),
+                        NumberField("AirDropFrequency", "72", 0, 999,
+                            "Hours between air drops. 72 = every 3 in-game days. Set to 0 to disable air drops entirely."),
+                        BoolField("AirDropMarker", "true",
+                            "Shows a marker on the map/compass when an air drop lands. Turn off for \"find it yourself\" mode."),
+                        NumberField("PartySharedKillRange", "100", 0, 10000,
+                            "Distance in blocks within which party members share XP and quest-kill credit. 100 is friendly; very high = server-wide."),
                     }
                 },
                 new ConfigFieldGroup
@@ -117,14 +202,24 @@ namespace KitsuneCommand.Services
                     Key = "landClaims",
                     Fields = new List<ConfigFieldDef>
                     {
-                        NumberField("LandClaimCount", "3", 1, 50, "Maximum land claims per player"),
-                        NumberField("LandClaimSize", "41", 1, 200, "Protected area size in blocks"),
-                        NumberField("LandClaimDeadZone", "30", 0, 200, "Minimum distance between land claims"),
-                        NumberField("LandClaimExpiryTime", "7", 1, 365, "Days before an unvisited claim expires"),
-                        SelectField("LandClaimDecayMode", "0", new[] { "0", "1", "2" }, new[] { "0 - Slow (Linear)", "1 - Fast (Exponential)", "2 - None (Full Protection)" }, "How claim protection decays"),
-                        NumberField("LandClaimOnlineDurabilityModifier", "4", 0, 100, "Block hardness multiplier when owner is online"),
-                        NumberField("LandClaimOfflineDurabilityModifier", "4", 0, 100, "Block hardness multiplier when owner is offline"),
-                        NumberField("LandClaimOfflineDelay", "0", 0, 1440, "Minutes after logout before transitioning to offline protection"),
+                        NumberField("LandClaimCount", "3", 1, 50,
+                            "Keystones a single player can place. Each defines a protected build area."),
+                        NumberField("LandClaimSize", "41", 1, 200,
+                            "Edge length of the protected cube in blocks (centered on the keystone). 41 is vanilla."),
+                        NumberField("LandClaimDeadZone", "30", 0, 200,
+                            "Minimum blocks between different players' keystones. Prevents claim-overlap grief."),
+                        NumberField("LandClaimExpiryTime", "7", 1, 365,
+                            "Real-world days an offline player's claim stays active. Expires after that — their base becomes fair game."),
+                        SelectField("LandClaimDecayMode", "0",
+                            new[] { "0", "1", "2" },
+                            new[] { "Slow (linear)", "Fast (exponential)", "None (full protection)" },
+                            "How claim protection weakens while the owner is offline."),
+                        NumberField("LandClaimOnlineDurabilityModifier", "4", 0, 100,
+                            "Block hardness multiplier inside a claim when the owner is online. 4 = 4× tougher; 0 = indestructible."),
+                        NumberField("LandClaimOfflineDurabilityModifier", "4", 0, 100,
+                            "Same idea, but when the owner is offline. Raise for a more forgiving offline experience."),
+                        NumberField("LandClaimOfflineDelay", "0", 0, 1440,
+                            "Minutes after logout before offline protection kicks in. 0 is instant — useful if players log-out-to-escape."),
                     }
                 },
                 new ConfigFieldGroup
@@ -132,17 +227,30 @@ namespace KitsuneCommand.Services
                     Key = "networkAndSlots",
                     Fields = new List<ConfigFieldDef>
                     {
-                        NumberField("ServerPort", "26900", 1024, 65535, "Main game port (also uses +1 and +2)"),
-                        SelectField("ServerVisibility", "2", new[] { "0", "1", "2" }, new[] { "0 - Not Listed", "1 - Friends Only", "2 - Public" }, "Server browser visibility"),
-                        NumberField("ServerMaxPlayerCount", "8", 1, 64, "Maximum concurrent players"),
-                        NumberField("ServerReservedSlots", "0", 0, 10, "Reserved slots for permissioned players"),
-                        NumberField("ServerReservedSlotsPermission", "100", 0, 1000, "Permission level required for reserved slots"),
-                        NumberField("ServerAdminSlots", "0", 0, 10, "Extra admin-only slots above max"),
-                        NumberField("ServerAdminSlotsPermission", "0", 0, 1000, "Permission level required for admin slots"),
-                        NumberField("ServerMaxWorldTransferSpeedKiBs", "512", 64, 10240, "Max world transfer speed in KiB/s"),
-                        TextField("ServerDisabledNetworkProtocols", "", "Protocols to disable (e.g. SteamNetworking)"),
-                        NumberField("ServerMaxAllowedViewDistance", "12", 6, 12, "Max view distance clients can request"),
-                        NumberField("MaxQueuedMeshLayers", "1000", 100, 10000, "Max chunk mesh layers in queue"),
+                        NumberField("ServerPort", "26900", 1024, 65535,
+                            "Main UDP game port. The server also listens on +1 and +2. Forward all three on your router."),
+                        SelectField("ServerVisibility", "2",
+                            new[] { "0", "1", "2" },
+                            new[] { "Not Listed", "Friends Only", "Public" },
+                            "How the server appears in the browser. \"Not Listed\" still accepts direct-IP connections."),
+                        NumberField("ServerMaxPlayerCount", "8", 1, 64,
+                            "Maximum concurrent players. 8 is a friendly community size; 16+ needs a beefier host."),
+                        NumberField("ServerReservedSlots", "0", 0, 10,
+                            "Slots reserved for players with high permission. 0 disables the system."),
+                        NumberField("ServerReservedSlotsPermission", "100", 0, 1000,
+                            "Minimum permission level (0 is highest) required to claim a reserved slot."),
+                        NumberField("ServerAdminSlots", "0", 0, 10,
+                            "Extra admin-only slots above MaxPlayerCount. Lets admins always join a full server."),
+                        NumberField("ServerAdminSlotsPermission", "0", 0, 1000,
+                            "Minimum permission level required to use the admin-only slots above."),
+                        NumberField("ServerMaxWorldTransferSpeedKiBs", "512", 64, 10240,
+                            "Max KiB/s used when sending the world to a freshly-joined player. Caps at ~1300 regardless."),
+                        TextField("ServerDisabledNetworkProtocols", "",
+                            "Comma-separated protocols to disable (LiteNetLib, SteamNetworking). Dedicated servers on public IPs often disable SteamNetworking."),
+                        NumberField("ServerMaxAllowedViewDistance", "12", 6, 12,
+                            "Cap on how far clients can render. Higher = more CPU and memory. 12 is the engine max."),
+                        NumberField("MaxQueuedMeshLayers", "1000", 100, 10000,
+                            "Buffer size for chunk mesh generation. Lower saves memory; higher avoids gen stutter with many players."),
                     }
                 },
                 new ConfigFieldGroup
@@ -150,16 +258,28 @@ namespace KitsuneCommand.Services
                     Key = "admin",
                     Fields = new List<ConfigFieldDef>
                     {
-                        BoolField("TelnetEnabled", "true", "Enable the telnet remote console"),
-                        NumberField("TelnetPort", "8081", 1024, 65535, "Telnet port"),
-                        PasswordField("TelnetPassword", "", "Telnet access password"),
-                        NumberField("TelnetFailedLoginLimit", "10", 0, 100, "Failed logins before temporary ban"),
-                        NumberField("TelnetFailedLoginsBlocktime", "10", 0, 3600, "Block duration after failed logins (seconds)"),
-                        BoolField("EACEnabled", "true", "Easy Anti-Cheat (disable for modded clients)"),
-                        BoolField("ServerAllowCrossplay", "false", "Enable crossplay support"),
-                        BoolField("IgnoreEOSSanctions", "false", "Ignore EOS sanctions when allowing players"),
-                        SelectField("HideCommandExecutionLog", "0", new[] { "0", "1", "2", "3" }, new[] { "0 - Show All", "1 - Hide from Telnet", "2 - Hide from Clients", "3 - Hide Everything" }, "Admin command log visibility"),
-                        BoolField("PersistentPlayerProfiles", "false", "Lock players to their last-used profile"),
+                        BoolField("TelnetEnabled", "true",
+                            "Enables the telnet interface for remote console access. Needed for most external admin tooling."),
+                        NumberField("TelnetPort", "8081", 1024, 65535,
+                            "Port the telnet listener binds to."),
+                        PasswordField("TelnetPassword", "",
+                            "Telnet access password. If blank, telnet only binds to localhost (still safe for local tools like KC)."),
+                        NumberField("TelnetFailedLoginLimit", "10", 0, 100,
+                            "Failed password attempts before the client is temporarily blocked."),
+                        NumberField("TelnetFailedLoginsBlocktime", "10", 0, 3600,
+                            "Seconds a telnet client stays blocked after hitting the failure limit."),
+                        BoolField("EACEnabled", "true",
+                            "Easy Anti-Cheat. Must be OFF for Harmony-based mods (KitsuneCommand included) to load on clients."),
+                        BoolField("ServerAllowCrossplay", "false",
+                            "Enables crossplay with console players. Comes with default player-slot restrictions."),
+                        BoolField("IgnoreEOSSanctions", "false",
+                            "Allow players with EOS sanctions against them. Leave off unless you have a specific reason."),
+                        SelectField("HideCommandExecutionLog", "0",
+                            new[] { "0", "1", "2", "3" },
+                            new[] { "Show all", "Hide from telnet/control panel", "Also hide from clients", "Hide everything" },
+                            "How loudly admin command execution is logged across interfaces."),
+                        BoolField("PersistentPlayerProfiles", "false",
+                            "Locks each player to the profile they first joined with. Good for roleplay servers; blocks profile-swap tricks."),
                     }
                 },
                 new ConfigFieldGroup
@@ -167,22 +287,38 @@ namespace KitsuneCommand.Services
                     Key = "advanced",
                     Fields = new List<ConfigFieldDef>
                     {
-                        BoolField("TerminalWindowEnabled", "true", "Show the terminal window (Windows only)"),
-                        BoolField("WebDashboardEnabled", "false", "Enable the built-in 7D2D web dashboard"),
-                        NumberField("WebDashboardPort", "8080", 1024, 65535, "Built-in dashboard port"),
-                        TextField("WebDashboardUrl", "", "External URL for reverse proxy setups"),
-                        BoolField("EnableMapRendering", "false", "Render map tiles while exploring (used by web dashboard)"),
-                        NumberField("MaxChunkAge", "-1", -1, 9999, "Days before unvisited chunks reset (-1 = never)"),
-                        NumberField("SaveDataLimit", "-1", -1, 100000, "Max save game disk space in MB (-1 = unlimited)"),
-                        NumberField("BedrollExpiryTime", "45", 1, 365, "Real-world days before a bedroll expires"),
-                        NumberField("BedrollDeadZoneSize", "15", 0, 100, "Bedroll safe zone radius in blocks"),
-                        NumberField("MaxUncoveredMapChunksPerPlayer", "131072", 0, 1000000, "Max map chunks revealed per player"),
-                        BoolField("DynamicMeshEnabled", "true", "Enable the dynamic mesh system"),
-                        BoolField("DynamicMeshLandClaimOnly", "true", "Dynamic mesh only in land claim areas"),
-                        NumberField("DynamicMeshLandClaimBuffer", "3", 0, 10, "Dynamic mesh LCB chunk radius"),
-                        NumberField("DynamicMeshMaxItemCache", "3", 1, 20, "Concurrent mesh items to process"),
-                        NumberField("TwitchServerPermission", "90", 0, 1000, "Permission level for Twitch integration"),
-                        BoolField("TwitchBloodMoonAllowed", "false", "Allow Twitch actions during blood moon"),
+                        BoolField("TerminalWindowEnabled", "true",
+                            "Shows the log window on Windows hosts. No effect on Linux."),
+                        BoolField("WebDashboardEnabled", "false",
+                            "TFP's built-in web dashboard. Leave OFF — KitsuneCommand replaces this with a proper panel."),
+                        NumberField("WebDashboardPort", "8080", 1024, 65535,
+                            "Port for TFP's built-in dashboard (if you enabled it above)."),
+                        TextField("WebDashboardUrl", "",
+                            "External URL if the built-in dashboard is behind a reverse proxy. Full URL with scheme."),
+                        BoolField("EnableMapRendering", "false",
+                            "Renders map tiles while players explore. Uses CPU. KitsuneCommand has its own map renderer that doesn't need this."),
+                        NumberField("MaxChunkAge", "-1", -1, 9999,
+                            "In-game days before unvisited unclaimed chunks reset to original state. -1 never resets."),
+                        NumberField("SaveDataLimit", "-1", -1, 100000,
+                            "Max MB the save can consume before oldest chunks get pruned. -1 disables the limit."),
+                        NumberField("BedrollExpiryTime", "45", 1, 365,
+                            "Real-world days a bedroll stays active after the owner stops logging in. Expires into a normal block."),
+                        NumberField("BedrollDeadZoneSize", "15", 0, 100,
+                            "\"Safe zone\" radius around an active bedroll — zombies won't spawn inside this bubble. Smaller = harder."),
+                        NumberField("MaxUncoveredMapChunksPerPlayer", "131072", 0, 1000000,
+                            "Hard limit on map discovery per player (affects save file size). Vanilla default covers ~32 km²."),
+                        BoolField("DynamicMeshEnabled", "true",
+                            "Tracks block changes and resolves mesh collisions — needed for vehicle collision in modified areas."),
+                        BoolField("DynamicMeshLandClaimOnly", "true",
+                            "Only run dynamic mesh inside player LCB areas. Saves CPU."),
+                        NumberField("DynamicMeshLandClaimBuffer", "3", 0, 10,
+                            "Extra chunk radius around claims included in dynamic mesh."),
+                        NumberField("DynamicMeshMaxItemCache", "3", 1, 20,
+                            "Concurrent dynamic-mesh items processed. Higher uses more RAM."),
+                        NumberField("TwitchServerPermission", "90", 0, 1000,
+                            "Permission level required to use Twitch integration. 90 is most trusted players + admins."),
+                        BoolField("TwitchBloodMoonAllowed", "false",
+                            "Allow Twitch chat actions during blood moon. Off by default — can spiral into lag quickly."),
                     }
                 },
             };
@@ -206,11 +342,25 @@ namespace KitsuneCommand.Services
         private static string[] DamagePercentOptions()
             => new[] { "25", "50", "75", "100", "125", "150", "175", "200", "300" };
 
+        private static string[] DamagePercentLabels()
+            => new[]
+            {
+                "25% — quarter",
+                "50% — halved",
+                "75% — easier",
+                "100% — vanilla",
+                "125% — gentle boost",
+                "150% — noticeable",
+                "175% — generous",
+                "200% — double",
+                "300% — speedrun",
+            };
+
         private static string[] ZombieMoveOptions()
             => new[] { "0", "1", "2", "3", "4" };
 
         private static string[] ZombieMoveLabelOptions()
-            => new[] { "0 - Walk", "1 - Jog", "2 - Run", "3 - Sprint", "4 - Nightmare" };
+            => new[] { "Walk", "Jog", "Run", "Sprint", "Nightmare" };
     }
 
     public class ConfigFieldGroup
