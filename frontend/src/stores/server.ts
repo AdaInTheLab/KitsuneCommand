@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import apiClient from '@/api/client'
 
 export interface ActivityItem {
   id: number
@@ -21,6 +22,21 @@ export const useServerStore = defineStore('server', () => {
     totalOnline: 0,
     bloodMoonDay: 0,
   })
+
+  // KitsuneCommand mod version, fetched from /api/server/info on app mount.
+  // Backend reads this from ModInfo.xml at startup — no more hand-bumping in
+  // C# + XML + TS in lockstep every release.
+  const kcVersion = ref<string>('')
+
+  async function fetchKcVersion() {
+    if (kcVersion.value) return // already fetched
+    try {
+      const response = await apiClient.get('/api/server/info')
+      kcVersion.value = response.data?.data?.kitsuneCommandVersion ?? ''
+    } catch {
+      // Silent — the brand-version just won't render until the next successful fetch.
+    }
+  }
 
   let activityId = 0
 
@@ -48,5 +64,5 @@ export const useServerStore = defineStore('server', () => {
     }
   }
 
-  return { gameDay, gameHour, gameMinute, isBloodMoon, activity, bloodMoonVote, updateGameTime, updateBloodMoonVote, addActivity }
+  return { gameDay, gameHour, gameMinute, isBloodMoon, activity, bloodMoonVote, kcVersion, updateGameTime, updateBloodMoonVote, addActivity, fetchKcVersion }
 })

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useServerStore } from '@/stores/server'
 import { useAppWebSocket } from '@/composables/useAppWebSocket'
 import { useI18n } from 'vue-i18n'
 import { SUPPORTED_LOCALES, setLocale, type LocaleCode } from '@/i18n'
@@ -11,6 +12,7 @@ import Select from 'primevue/select'
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const server = useServerStore()
 const appWs = useAppWebSocket()
 const { t, locale } = useI18n()
 const sidebarCollapsed = ref(false)
@@ -80,6 +82,7 @@ async function handleLogout() {
 
 onMounted(() => {
   appWs.init()
+  server.fetchKcVersion()
 })
 
 onUnmounted(() => {
@@ -101,7 +104,7 @@ onUnmounted(() => {
       <div class="sidebar-header">
         <div class="brand" v-if="!sidebarCollapsed">
           <h2 class="brand-name">{{ t('layout.brandName') }}</h2>
-          <span class="brand-version">v2.0.0</span>
+          <span class="brand-version" v-if="server.kcVersion">v{{ server.kcVersion }}</span>
         </div>
         <Button
           :icon="sidebarCollapsed ? 'pi pi-angle-right' : 'pi pi-angle-left'"

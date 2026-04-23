@@ -14,6 +14,14 @@ namespace KitsuneCommand.Core
         public static SynchronizationContext MainThreadContext { get; private set; }
         public static bool IsGameStartDone { get; internal set; }
 
+        /// <summary>
+        /// The mod version read from ModInfo.xml at startup. Single source of truth —
+        /// surfaces to the /api/server/info endpoint and to startup log lines so we
+        /// never have to hand-bump version strings in C# + XML + TS in lockstep.
+        /// Falls back to "unknown" if ModInfo.xml can't be read.
+        /// </summary>
+        public static string ModVersion { get; private set; } = "unknown";
+
         // Windows native library loading
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern IntPtr LoadLibrary(string lpFileName);
@@ -37,6 +45,24 @@ namespace KitsuneCommand.Core
             ModInstance = _modInstance;
             ModPath = _modInstance.Path;
             MainThreadContext = SynchronizationContext.Current;
+
+            // Parse ModInfo.xml once at startup so ModVersion is available to any
+            // consumer (web API, log lines, etc.) without re-reading the file.
+            try
+            {
+                var modInfoPath = Path.Combine(ModPath, "ModInfo.xml");
+                if (File.Exists(modInfoPath))
+                {
+                    var doc = System.Xml.Linq.XDocument.Load(modInfoPath);
+                    var versionAttr = doc.Root?.Element("Version")?.Attribute("value")?.Value;
+                    if (!string.IsNullOrWhiteSpace(versionAttr))
+                        ModVersion = versionAttr;
+                }
+            }
+            catch
+            {
+                // Keep "unknown" — not worth blocking init over a metadata read.
+            }
 
             // Pre-load native libraries from the platform-specific subfolder.
             // Mono's P/Invoke resolver doesn't search mod directories by default,
@@ -75,7 +101,7 @@ namespace KitsuneCommand.Core
                 }
             }
 
-            Log.Out($"[KitsuneCommand] Initializing KitsuneCommand v2.5.0 on {(PlatformHelper.IsLinux ? "Linux" : "Windows")}...");
+            Log.Out($"[KitsuneCommand] Initializing KitsuneCommand v{ModVersion} on {(PlatformHelper.IsLinux ? "Linux" : "Windows")}...");
 
             _lifecycle = new ModLifecycle();
             _lifecycle.Initialize();

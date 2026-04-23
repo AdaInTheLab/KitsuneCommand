@@ -349,10 +349,6 @@ onMounted(() => {
                   {{ reachabilityLabel }}
                 </span>
               </div>
-              <div class="info-item">
-                <span class="info-label">{{ t('dashboard.kitsuneCommand') }}</span>
-                <span class="info-value">v{{ serverInfo.kitsuneCommandVersion }}</span>
-              </div>
             </div>
           </template>
         </Card>

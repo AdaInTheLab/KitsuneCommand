@@ -53,7 +53,7 @@ namespace KitsuneCommand.Web.Controllers
                 currentTime = world != null ? GameUtils.WorldTimeToString(world.worldTime) : "N/A",
                 onlinePlayers = gameManager?.World?.Players?.Count ?? 0,
                 version = Constants.cVersionInformation.LongString,
-                kitsuneCommandVersion = "2.0.0",
+                kitsuneCommandVersion = Core.ModEntry.ModVersion,
                 localIp = GetLocalIp(),
                 publicIp = GetPublicIp(),
                 // Reachability: derived from Steam/EOS master-server registration state.
