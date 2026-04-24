@@ -40,15 +40,15 @@ export function useWebSocket() {
     const host = window.location.hostname
     // Dev: page at http://host:8890 → WebSocket server is on sibling port 8889, explicit.
     // Prod: page behind reverse proxy (standard 80/443 or custom), same origin — the proxy
-    // is responsible for routing /kcevents to the 8889 backend.
+    // is responsible for routing /kctunnel to the 8889 backend.
     //
-    // Path is /kcevents because Cloudflare's managed WAF blocks both /ws* (on WS Upgrade)
-    // and /socket* (on ANY request, even plain GET) with HTTP 400 at the edge — presumably
-    // rules targeting common WebSocket-exploit scanners. Tested many candidate names;
-    // /kcevents is KC-specific, descriptive, and not on any CF deny-list.
+    // Path is /kctunnel. Cloudflare's managed WAF blocks an *expanding* list of path
+    // name classes at the edge (HTTP 400 without ever reaching origin). So far: /ws*
+    // (blocks WS Upgrade), /socket* (blocks any request), and /*events* (blocks any
+    // request; /kcevents got us). /kctunnel has tested clean everywhere we've probed.
     const isDevDirectPort = window.location.port === '8890'
     const portSuffix = isDevDirectPort ? ':8889' : ''
-    const url = `${protocol}//${host}${portSuffix}/kcevents?token=${auth.accessToken}`
+    const url = `${protocol}//${host}${portSuffix}/kctunnel?token=${auth.accessToken}`
 
     ws.value = new WebSocket(url)
 
