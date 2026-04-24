@@ -17,6 +17,14 @@ namespace KitsuneCommand.Core
     /// </summary>
     public class ModLifecycle
     {
+        /// <summary>
+        /// Static accessor to the DI container. Useful for classes 7D2D instantiates
+        /// directly (e.g. ConsoleCmdAbstract subclasses) that can't receive
+        /// constructor-injected dependencies the normal way.
+        /// Null until <see cref="Initialize"/> has run.
+        /// </summary>
+        public static IContainer Container { get; private set; }
+
         private IContainer _container;
         private Harmony _harmony;
         private WebServerHost _webServer;
@@ -37,6 +45,7 @@ namespace KitsuneCommand.Core
 
             // 3. Build DI container
             _container = ServiceRegistry.Build(settings);
+            Container = _container; // expose statically for ConsoleCmd classes
             Log.Out("[KitsuneCommand] Service container built.");
 
             // 4. Apply Harmony patches
