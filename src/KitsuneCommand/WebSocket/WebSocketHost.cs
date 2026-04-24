@@ -26,11 +26,14 @@ namespace KitsuneCommand.WebSocket
                 _server = new WebSocketServer(_settings.WebSocketPort);
                 _server.KeepClean = false; // Don't auto-close idle connections
                 _server.WaitTime = TimeSpan.FromSeconds(30);
-                // Endpoint path is "/socket" (not "/ws") because Cloudflare's managed
-                // WAF rules reject WebSocket Upgrade requests on any path starting with
-                // "ws" (including /ws, /wss, /ws-whatever) with HTTP 400 at the edge.
-                // Using /socket keeps the upgrade flowing through the tunnel untouched.
-                _server.AddWebSocketService<TelnetBehavior>("/socket");
+                // Endpoint path is "/kcevents" because Cloudflare's managed WAF blocks
+                // BOTH "/ws*" (on WebSocket Upgrade) AND "/socket*" (on any request,
+                // even plain GET) with HTTP 400 at the edge — presumably rules for
+                // common WebSocket-exploit scanners. Tested empirically: /kcevents,
+                // /kctunnel, /events, /pipe etc. all pass through CF cleanly. Keep
+                // this name KC-specific so it doesn't collide with anything generic
+                // a future WAF rule might target.
+                _server.AddWebSocketService<TelnetBehavior>("/kcevents");
                 _server.Start();
 
                 // Initialize the broadcaster
