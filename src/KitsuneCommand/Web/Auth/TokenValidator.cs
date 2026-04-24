@@ -73,11 +73,34 @@ namespace KitsuneCommand.Web.Auth
             {
                 var ticket = _tokenFormat.Unprotect(token);
                 if (ticket == null)
+                {
+                    // Log verbosely so we can see *why* Unprotect returned null:
+                    // length mismatch vs expected, first/last chars (in case it's
+                    // been URL-double-encoded or truncated in transit), and whether
+                    // the token is even valid Base64Url.
+                    var len = token.Length;
+                    var prefix = token.Length >= 12 ? token.Substring(0, 12) : token;
+                    var suffix = token.Length >= 12 ? token.Substring(token.Length - 12) : "";
+                    string decodeReport;
+                    try
+                    {
+                        var bytes = TextEncodings.Base64Url.Decode(token);
+                        decodeReport = $"base64url-decodes OK ({bytes?.Length ?? -1} bytes)";
+                    }
+                    catch (Exception decEx)
+                    {
+                        decodeReport = $"base64url-decode THREW: {decEx.GetType().Name}: {decEx.Message}";
+                    }
+                    Log.Out($"[KitsuneCommand] Token validation failed: unprotect returned null. len={len}, prefix='{prefix}', suffix='{suffix}', {decodeReport}");
                     return false;
+                }
 
                 // Check expiration
                 if (ticket.Properties?.ExpiresUtc != null && ticket.Properties.ExpiresUtc < DateTimeOffset.UtcNow)
+                {
+                    Log.Out($"[KitsuneCommand] Token validation failed: expired at {ticket.Properties.ExpiresUtc:o} (user={ticket.Identity?.FindFirst(ClaimTypes.Name)?.Value}).");
                     return false;
+                }
 
                 username = ticket.Identity?.FindFirst(ClaimTypes.Name)?.Value;
                 role = ticket.Identity?.FindFirst(ClaimTypes.Role)?.Value;

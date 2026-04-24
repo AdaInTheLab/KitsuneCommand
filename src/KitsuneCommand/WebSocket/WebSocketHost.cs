@@ -26,7 +26,18 @@ namespace KitsuneCommand.WebSocket
                 _server = new WebSocketServer(_settings.WebSocketPort);
                 _server.KeepClean = false; // Don't auto-close idle connections
                 _server.WaitTime = TimeSpan.FromSeconds(30);
-                _server.AddWebSocketService<TelnetBehavior>("/ws");
+                // Endpoint path is "/kctunnel" because Cloudflare's managed WAF
+                // blocks several path name classes with HTTP 400 at the edge, and
+                // each rule took a deploy to discover:
+                //   - /ws*         (blocks the WebSocket Upgrade handshake)
+                //   - /socket*     (blocks ANY request incl. plain GET; /socket,
+                //                   /sockets, /socketio, /socket.io all covered)
+                //   - /*events*    (also blocks plain GET; caught us via /kcevents
+                //                   which looked KC-specific but still matched)
+                // /kctunnel is empirically clean across every probe we've thrown
+                // at it. Prefer KC-prefixed names like this one so a future
+                // generic-name rule doesn't bite again.
+                _server.AddWebSocketService<TelnetBehavior>("/kctunnel");
                 _server.Start();
 
                 // Initialize the broadcaster

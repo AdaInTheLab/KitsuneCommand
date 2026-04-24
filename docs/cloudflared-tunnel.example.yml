@@ -1,0 +1,45 @@
+# Example Cloudflare Tunnel ingress for putting KitsuneCommand's web panel
+# behind panel.example.com via cloudflared. Copy to /etc/cloudflared/config.yml,
+# adapt hostname / tunnel ID / credentials path, restart with:
+#   sudo systemctl restart cloudflared
+#
+# What lives where:
+#   port 8890  → KC's HTTP listener (frontend SPA + /api/* + /api/auth/login)
+#   port 8889  → KC's WebSocket listener (real-time events; /kctunnel)
+#
+# The two non-obvious bits below caused us a full afternoon of debugging
+# (resolved on PR #38) — keep them.
+
+tunnel: <your-tunnel-name>
+credentials-file: /etc/cloudflared/<tunnel-id>.json
+
+ingress:
+  # The WebSocket endpoint must be ordered BEFORE the catch-all panel rule
+  # so its path regex matches first.
+  - hostname: panel.example.com
+    path: ^/kctunnel
+    service: http://127.0.0.1:8889
+    originRequest:
+      # WebSocketSharp's WebSocketServer (the lib KC uses) does strict
+      # Host-header validation: it compares the incoming Host to the
+      # authority it was bound to and rejects mismatches with HTTP 400
+      # *before* the upgrade hits OnOpen — so token-validation logging
+      # never fires and you'll spend hours wondering why nothing reaches
+      # your handler.
+      #
+      # Cloudflared by default forwards the public Host (panel.example.com)
+      # which doesn't match, so we rewrite it. Two important details:
+      #   1. The value must be in host:port form. Bare "localhost" still
+      #      gets rejected; it has to be "localhost:8889".
+      #   2. Use 127.0.0.1 explicitly in the service URL above — cloudflared
+      #      otherwise resolves "localhost" to ::1 (IPv6) first, and KC's
+      #      WS server only binds 0.0.0.0 (IPv4).
+      httpHostHeader: "localhost:8889"
+
+  # Everything else under panel.example.com goes to the HTTP listener
+  # (frontend SPA, /api/auth/login, REST endpoints, etc.).
+  - hostname: panel.example.com
+    service: http://127.0.0.1:8890
+
+  # Default catch-all.
+  - service: http_status:404
