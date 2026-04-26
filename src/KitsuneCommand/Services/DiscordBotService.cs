@@ -22,6 +22,14 @@ namespace KitsuneCommand.Services
         /// <summary>Fires when a user sends a message in the chat bridge channel.</summary>
         public event Action<string, string> OnChatBridgeMessage; // (username, message)
 
+        /// <summary>
+        /// Fires when the underlying Discord websocket reaches the Ready state —
+        /// i.e. the bot can actually send messages. Subscribers should be aware
+        /// this can fire repeatedly across a single session if the websocket
+        /// reconnects after a transient network blip.
+        /// </summary>
+        public event Action BotReady;
+
         public bool IsConnected => _client?.ConnectionState == ConnectionState.Connected;
         public string BotUsername => _client?.CurrentUser?.ToString();
         public int Latency => _client?.Latency ?? -1;
@@ -197,6 +205,12 @@ namespace KitsuneCommand.Services
                 // Fire and forget — don't block the gateway
                 _ = RegisterSlashCommandsAsync();
             }
+
+            // Notify subscribers that the bot is now actually able to send.
+            // Wrapped in try/catch so a buggy subscriber can't take down the
+            // gateway connection.
+            try { BotReady?.Invoke(); }
+            catch (Exception ex) { Log.Warning($"[KitsuneCommand] BotReady handler threw: {ex.Message}"); }
 
             return Task.CompletedTask;
         }
