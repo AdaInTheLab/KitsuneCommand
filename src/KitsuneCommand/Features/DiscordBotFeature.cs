@@ -38,6 +38,15 @@ namespace KitsuneCommand.Features
             _playerManager = playerManager;
         }
 
+        // "Server Online" notification needs both the game to have started AND
+        // the bot to be ready (websocket Ready, not just LoginAsync returned).
+        // We can't just send on GameStartDoneEvent because the bot is mid-
+        // connect at that moment — SendEmbedAsync silently no-ops if the
+        // gateway isn't up yet.
+        private bool _gameStarted;
+        private bool _botReady;
+        private bool _serverStartNotified;
+
         protected override void OnEnable()
         {
             LoadPersistedSettings();
@@ -50,9 +59,10 @@ namespace KitsuneCommand.Features
             EventBus.Subscribe<GameShutdownEvent>(OnGameShutdown);
             EventBus.Subscribe<SkyChangedEvent>(OnSkyChanged);
 
-            // Wire up Discord -> game chat bridge
+            // Wire up Discord -> game chat bridge + bot lifecycle
             _botService.OnChatBridgeMessage += OnDiscordChatMessage;
             _botService.SlashCommandReceived += OnSlashCommand;
+            _botService.BotReady += OnBotReady;
 
             // Start the bot if configured
             if (Settings.Enabled && !string.IsNullOrWhiteSpace(Settings.BotToken))
@@ -74,6 +84,7 @@ namespace KitsuneCommand.Features
 
             _botService.OnChatBridgeMessage -= OnDiscordChatMessage;
             _botService.SlashCommandReceived -= OnSlashCommand;
+            _botService.BotReady -= OnBotReady;
 
             _ = _botService.StopAsync();
         }
@@ -156,6 +167,29 @@ namespace KitsuneCommand.Features
 
         private void OnGameStartDone(GameStartDoneEvent e)
         {
+            _gameStarted = true;
+            TryEmitServerStart();
+        }
+
+        private void OnBotReady()
+        {
+            _botReady = true;
+            TryEmitServerStart();
+        }
+
+        /// <summary>
+        /// Emit the "Server Online" notification once both flags are true.
+        /// Idempotent across the lifetime of the feature: if the bot reconnects
+        /// after a network blip, we don't spam another "Server Online" — it
+        /// already announced itself the first time the gateway came up.
+        /// </summary>
+        private void TryEmitServerStart()
+        {
+            if (_serverStartNotified) return;
+            if (!_gameStarted || !_botReady) return;
+
+            // Settings might disable this even though the prerequisites are
+            // met — re-check at emit time so the feature stays toggle-able.
             if (!Settings.Enabled || !Settings.EventNotificationsEnabled || !Settings.NotifyServerStart) return;
             if (Settings.EventChannelId == 0) return;
 
@@ -166,6 +200,7 @@ namespace KitsuneCommand.Features
                 .WithCurrentTimestamp();
 
             _ = _botService.SendEmbedAsync(Settings.EventChannelId, embed);
+            _serverStartNotified = true;
         }
 
         private void OnGameShutdown(GameShutdownEvent e)
