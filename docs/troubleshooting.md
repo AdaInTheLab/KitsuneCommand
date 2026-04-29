@@ -149,6 +149,57 @@ need to clear stale hashed bundles before upload (recommended), `rm -f
 
 ---
 
+## My server shows `N/A` ping and a blank description in the in-game server browser
+
+(Your server still appears in the list, you can connect to it, gameplay
+is fine — the *display* in the browser is just empty.)
+
+**Cause (confirmed):** 7D2D V 2.x switched the server browser's discovery
+mechanism from Steam Query to **EOS** (Epic Online Services). Steam-side
+ports `26901` and `26903` are not bound by the dedicated server anymore,
+**by design**. `sudo ss -tulnp | grep ':269'` will only show `26900` and
+`26902`. The server logs make this clear:
+
+```
+[Platform] Using cross platform: EOS
+[EOS] Initialize: Success
+[EOS] Registering server
+[EOS] Server registered, session: <id>, 56 attributes   ← description, world,
+[Steamworks.NET] GameServer.Init successful                 player count, etc.
+[Steamworks.NET] GameServer.LogOn successful, SteamID=...   are bundled in here
+```
+
+So the server *is* properly published, with its description and stats
+sent to EOS as session attributes. **There is no missing port to bind
+and no config to fix on the server side.**
+
+**Cause (inferred, not yet fully verified):** the `N/A` and blank
+description in the browser is something downstream of EOS — either an
+EOS lookup miss for some subset of sessions, or a vanilla client-side
+rendering bug for certain attribute combinations. Hits other operators'
+servers too, not unique to KC. Tends to come and go.
+
+**"Fix":** there isn't one on your end. Don't go chasing a missing
+`26901` bind or editing `serverconfig.xml`; you'll burn an afternoon for
+nothing. The server is correctly registered. To confirm, look for the
+EOS / GameServer lines above in `~/7d2d-server/output_log__*.txt`:
+
+```bash
+grep -iE "GameServer|Server registered|EOS|MasterServer" \
+  $(ls -t ~/7d2d-server/output_log__*.txt | head -1) | head -10
+```
+
+If those lines are present and successful, your server is fine — direct-
+IP connect works, KC's panel-side dashboard keeps showing live stats
+(it doesn't route through the public browser at all), and the cosmetic
+display issue tends to resolve in a TFP patch or as EOS catches up.
+
+If `[EOS] Initialize` *fails* in the log, that's a different and real
+problem — EOS SDK version mismatch, network egress to EOS blocked, etc.
+Out of scope for this entry but worth flagging in a fresh card.
+
+---
+
 ## Adding an entry
 
 Lower the friction so this list keeps growing alongside the bug fixes:
