@@ -163,6 +163,16 @@ namespace KitsuneCommand.Features
                         HandleBloodMoonVote(playerId, entityId, playerName);
                         return true;
 
+                    // ── Help / discovery ─────────────────────────────────
+                    // Always available regardless of feature toggles. If a server
+                    // disables every group, /help still works and just reports
+                    // back that nothing's enabled — which is itself useful info.
+                    case "help":
+                    case "commands":
+                    case "?":
+                        HandleHelp(entityId, settings);
+                        return true;
+
                     default:
                         return false; // Not a recognized command
                 }
@@ -712,6 +722,67 @@ namespace KitsuneCommand.Features
                 case VoteResult.OnCooldown:
                     Reply(entityId, bmSettings.OnCooldownMessage);
                     break;
+            }
+        }
+
+        // ─── Help ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Lists the commands available to the calling player. Only enabled
+        /// feature groups are shown — running `/help` on a server with the
+        /// store turned off shouldn't tell the player to try `/buy`.
+        ///
+        /// Each Reply() is a separate `pm` to the player's chat, so we can
+        /// safely emit one line per group without worrying about message
+        /// length truncation.
+        /// </summary>
+        private void HandleHelp(int entityId, ChatCommandSettings settings)
+        {
+            var p = settings.Prefix;
+            Reply(entityId, "Available commands:");
+
+            var anyEnabled = false;
+
+            if (settings.HomeEnabled)
+            {
+                Reply(entityId, $"  HOME: {p}home [name], {p}sethome <name>, {p}delhome <name>, {p}homes");
+                anyEnabled = true;
+            }
+            if (settings.TeleportEnabled)
+            {
+                Reply(entityId, $"  TELEPORT: {p}tp <city>, {p}cities");
+                anyEnabled = true;
+            }
+            if (settings.PointsEnabled)
+            {
+                Reply(entityId, $"  POINTS: {p}points, {p}signin");
+                anyEnabled = true;
+            }
+            if (settings.StoreEnabled)
+            {
+                Reply(entityId, $"  STORE: {p}shop, {p}buy <item>");
+                anyEnabled = true;
+            }
+            if (settings.VipEnabled)
+            {
+                Reply(entityId, $"  VIP: {p}vip");
+                anyEnabled = true;
+            }
+            if (settings.TicketEnabled)
+            {
+                Reply(entityId, $"  TICKETS: {p}ticket <message>, {p}ticket <id>, {p}tickets");
+                anyEnabled = true;
+            }
+
+            // Blood Moon Vote has its own enable check inside the feature
+            // (rather than a settings.BloodMoonVoteEnabled flag here), so we
+            // surface it unconditionally; the feature itself replies with a
+            // "disabled" message if a player tries to vote while it's off.
+            Reply(entityId, $"  BLOOD MOON: {p}skipbm (alias: {p}voteskip)");
+
+            if (!anyEnabled)
+            {
+                Reply(entityId, "(All optional feature groups are currently disabled on this server.)");
             }
         }
 
