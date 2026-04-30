@@ -1342,7 +1342,10 @@ onMounted(() => {
             <Card class="settings-card" v-if="voteRewardsSettings.providers && voteRewardsSettings.providers.length > 0">
               <template #title>{{ t('settings.voteRewardsProviderHeader') }}</template>
               <template #content>
-                <div v-for="(provider, idx) in voteRewardsSettings.providers" :key="provider.key" class="provider-block vote-provider">
+                <!-- :key includes idx so duplicate provider keys (legacy state) don't collide
+                     in Vue's v-for diffing. Backend dedups on load now (see EnsureDefaultProviders),
+                     but this is defense in depth for any future regression. -->
+                <div v-for="(provider, idx) in voteRewardsSettings.providers" :key="`${provider.key}-${idx}`" class="provider-block vote-provider">
                   <h3 class="provider-title">{{ voteProviderDisplayName(provider.key) }}</h3>
 
                   <div class="vote-provider-grid">
