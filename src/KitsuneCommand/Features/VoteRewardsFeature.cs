@@ -310,11 +310,29 @@ namespace KitsuneCommand.Features
                     return result;
                 }
 
-                // STEP 2: grant the actual reward. If this fails the audit row
-                // is still in place — admin can see the failure in the log and
-                // intervene manually rather than the player getting a silent
-                // double-grant on retry.
-                var grantedDescription = DispatchReward(steamId, playerName, cfg);
+                // STEP 2: grant the actual reward. If dispatch throws (e.g. an
+                // admin typo'd the VIP-gift template name), we MUST roll back
+                // the audit row — otherwise HasGrantForDate will short-circuit
+                // every future sweep and the player is permanently locked out
+                // of claiming, even after the admin fixes the misconfiguration.
+                //
+                // The narrow try/catch here ensures we only roll back on a
+                // dispatch failure, not on the broader try below (which catches
+                // network errors from STEP 0 / STEP 3 — those don't leave an
+                // orphaned audit row).
+                string grantedDescription;
+                try
+                {
+                    grantedDescription = DispatchReward(steamId, playerName, cfg);
+                }
+                catch (Exception dispatchEx)
+                {
+                    _grantRepo.DeleteByKey(provider.Key, steamId, voteDate);
+                    Log.Warning($"[KitsuneCommand] VoteRewards: dispatch failed for {steamId} via {provider.Key} — rolled back audit row so next sweep can retry. Cause: {dispatchEx.Message}");
+                    result.Outcome = ClaimOutcome.Error;
+                    result.Message = $"{provider.DisplayName}: dispatch failed — {dispatchEx.Message}";
+                    return result;
+                }
 
                 // STEP 3: tell the listing site we delivered. Failure here is
                 // not catastrophic — next status check returns "unclaimed" again,

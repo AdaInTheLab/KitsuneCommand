@@ -26,6 +26,15 @@ namespace KitsuneCommand.Data.Repositories
         IEnumerable<VoteGrant> GetForPlayer(string steamId, int limit = 50);
 
         int GetTotalCount();
+
+        /// <summary>
+        /// Removes a grant row by its idempotency key. Used as a rollback when
+        /// the reward dispatch step throws AFTER the audit row was inserted —
+        /// without this, a misconfigured reward (e.g. wrong VIP-gift template
+        /// name) would lock the player out of ever claiming, because every
+        /// future sweep would short-circuit on HasGrantForDate.
+        /// </summary>
+        int DeleteByKey(string provider, string steamId, string voteDate);
     }
 
     public class VoteGrantRepository : IVoteGrantRepository
@@ -88,6 +97,15 @@ namespace KitsuneCommand.Data.Repositories
         {
             using var conn = _db.CreateConnection();
             return conn.ExecuteScalar<int>("SELECT COUNT(*) FROM vote_grants");
+        }
+
+        public int DeleteByKey(string provider, string steamId, string voteDate)
+        {
+            using var conn = _db.CreateConnection();
+            return conn.Execute(@"
+                DELETE FROM vote_grants
+                WHERE provider = @Provider AND steam_id = @SteamId AND vote_date = @VoteDate",
+                new { Provider = provider, SteamId = steamId, VoteDate = voteDate });
         }
     }
 }
