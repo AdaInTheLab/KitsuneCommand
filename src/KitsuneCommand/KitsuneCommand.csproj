@@ -52,6 +52,20 @@
   <!-- Security -->
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <!--
+      Chaos.NaCl: public-domain port of libsodium's NaCl primitives.
+      Used by the PackRelay publish path (Services/PackRelay/Ed25519Signer.cs)
+      to sign canonical manifests with the publisher's Ed25519 key.
+      Private=true so the DLL lands in bin/ for prod.
+      .NET 4.8 lacks System.Security.Cryptography.Ed25519 (added .NET 8);
+      NSec wants .NET Standard 2.1; BouncyCastle is 3MB of overkill.
+      Same DLL the PackRelayServerTools 7DTD mod ships, kept in sync
+      so any future security fix lands once for both repos.
+    -->
+    <Reference Include="Chaos.NaCl">
+      <HintPath>lib\Chaos.NaCl.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Graphics (map tile rendering) -->
